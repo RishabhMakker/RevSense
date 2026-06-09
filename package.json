@@ -1,0 +1,21 @@
+{
+  "name": "revsense",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RevSense — AI-powered car sound triage. Monorepo: Next.js frontend + pure-TS diagnostic backend.",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w frontend",
+    "build": "npm run build -w frontend",
+    "start": "npm run start -w frontend",
+    "lint": "npm run lint -w frontend",
+    "typecheck": "npm run typecheck -w backend && npm run typecheck -w frontend",
+    "test": "npm run test -w backend"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

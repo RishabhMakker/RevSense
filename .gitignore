@@ -1,0 +1,22 @@
+# dependencies
+node_modules/
+
+# next.js
+frontend/.next/
+frontend/out/
+
+# env files — never commit secrets
+.env
+.env.*
+!.env.example
+
+# builds & coverage
+dist/
+coverage/
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+.vercel
+*.tsbuildinfo

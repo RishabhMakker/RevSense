@@ -1,0 +1,26 @@
+{
+  "vehicle": {
+    "make": "Honda",
+    "model": "Civic",
+    "year": 2014,
+    "mileage": 128000,
+    "engineType": "gasoline"
+  },
+  "symptomText": "I hear a clicking or popping sound when turning the steering wheel at low speed, like pulling out of a parking spot. It seems louder when I turn right and accelerate at the same time.",
+  "contexts": ["low_speed_turning", "turning_right", "acceleration"],
+  "audio": {
+    "source": "recording",
+    "durationSec": 6.4,
+    "sampleRateHz": 48000,
+    "rmsDb": -28.5,
+    "peakDb": -9.2,
+    "crestFactorDb": 19.3,
+    "spectralCentroidHz": 1850,
+    "spectralFlatness": 0.31,
+    "zeroCrossingRateHz": 2100,
+    "bandEnergy": { "low": 0.22, "lowMid": 0.31, "mid": 0.29, "high": 0.18 },
+    "pulseRateHz": 4.2,
+    "pulseCount": 27,
+    "hints": ["rhythmic_ticking", "sharp_transients"]
+  }
+}

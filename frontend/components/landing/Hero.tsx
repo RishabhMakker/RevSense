@@ -15,7 +15,7 @@ export function Hero() {
       <div className="mx-auto flex max-w-6xl flex-col items-center px-6 text-center">
         <div className="glass mb-7 flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium text-amber-200/90">
           <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-          {KNOWN_ISSUE_COUNT} failure patterns · 10 vehicle systems · works with zero API keys
+          {KNOWN_ISSUE_COUNT} failure patterns · 10 vehicle systems
         </div>
 
         <h1 className="max-w-3xl text-balance text-4xl font-semibold leading-[1.08] tracking-tight text-white sm:text-6xl">

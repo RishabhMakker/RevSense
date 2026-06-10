@@ -88,6 +88,9 @@ and the backend stays independently testable (`npm test`).
 
 ## Getting started
 
+> For a step-by-step run guide (prerequisites, optional AI setup,
+> troubleshooting), see **[INSTRUCTIONS.md](INSTRUCTIONS.md)**.
+
 ```bash
 # Node 20+ required
 npm install        # installs both workspaces

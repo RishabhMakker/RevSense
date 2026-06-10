@@ -2,7 +2,7 @@
   "name": "revsense",
   "version": "0.1.0",
   "private": true,
-  "description": "RevSense — AI-powered car sound triage. Monorepo: Next.js frontend + pure-TS diagnostic backend.",
+  "description": "RevSense — car-sound triage via a rule-based diagnostic engine (optional AI explanations). Monorepo: Next.js frontend + pure-TS backend.",
   "workspaces": [
     "frontend",
     "backend"

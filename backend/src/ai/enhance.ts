@@ -2,18 +2,21 @@ import type { DiagnoseRequest, DiagnosisResult } from "../schemas";
 import type { AIEnhancement } from "./prompt";
 import { enhanceWithAnthropic } from "./anthropic";
 import { enhanceWithOpenAI } from "./openai";
+import { enhanceWithOpenRouter } from "./openrouter";
 
 /**
  * Provider resolution from environment variables — no key, no AI, no error:
  *
- *   AI_PROVIDER        "anthropic" | "openai" | "none" (default: auto-detect)
- *   ANTHROPIC_API_KEY  enables the Anthropic provider
- *   OPENAI_API_KEY     enables the OpenAI provider
- *   AI_MODEL           optional model override for the active provider
+ *   AI_PROVIDER         "anthropic" | "openai" | "openrouter" | "none"
+ *                       (default: auto-detect)
+ *   ANTHROPIC_API_KEY   enables the Anthropic provider
+ *   OPENAI_API_KEY      enables the OpenAI provider
+ *   OPENROUTER_API_KEY  enables the OpenRouter provider (free models)
+ *   AI_MODEL            optional model override for the active provider
  */
 
 interface ResolvedProvider {
-  name: "anthropic" | "openai";
+  name: "anthropic" | "openai" | "openrouter";
   label: string;
   apiKey: string;
   model?: string;
@@ -25,6 +28,7 @@ function resolveProvider(): ResolvedProvider | null {
   const model = process.env.AI_MODEL?.trim() || undefined;
   const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
   const openaiKey = process.env.OPENAI_API_KEY?.trim();
+  const openrouterKey = process.env.OPENROUTER_API_KEY?.trim();
 
   if (requested === "anthropic") {
     return anthropicKey
@@ -36,11 +40,23 @@ function resolveProvider(): ResolvedProvider | null {
       ? { name: "openai", label: "OpenAI", apiKey: openaiKey, model }
       : null;
   }
-  // Auto-detect: prefer Anthropic.
+  if (requested === "openrouter") {
+    return openrouterKey
+      ? { name: "openrouter", label: "OpenRouter", apiKey: openrouterKey, model }
+      : null;
+  }
+  // Auto-detect: prefer Anthropic, then OpenAI, then OpenRouter.
   if (anthropicKey)
     return { name: "anthropic", label: "Claude", apiKey: anthropicKey, model };
   if (openaiKey)
     return { name: "openai", label: "OpenAI", apiKey: openaiKey, model };
+  if (openrouterKey)
+    return {
+      name: "openrouter",
+      label: "OpenRouter",
+      apiKey: openrouterKey,
+      model,
+    };
   return null;
 }
 
@@ -133,7 +149,9 @@ export async function enhanceWithAI(
     const enhancement =
       provider.name === "anthropic"
         ? await enhanceWithAnthropic(provider.apiKey, req, result, provider.model)
-        : await enhanceWithOpenAI(provider.apiKey, req, result, provider.model);
+        : provider.name === "openrouter"
+          ? await enhanceWithOpenRouter(provider.apiKey, req, result, provider.model)
+          : await enhanceWithOpenAI(provider.apiKey, req, result, provider.model);
     return mergeEnhancement(result, enhancement, provider.label);
   } catch (err) {
     console.error(

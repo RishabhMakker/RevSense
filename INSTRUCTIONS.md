@@ -49,10 +49,11 @@ Then open `frontend/.env.local` and uncomment one of:
 
 | Variable | Effect |
 |---|---|
-| `ANTHROPIC_API_KEY` | Enables Claude-powered explanations (recommended) |
+| `ANTHROPIC_API_KEY` | Enables Claude-powered explanations |
 | `OPENAI_API_KEY` | Alternative provider |
-| `AI_PROVIDER` | Force `anthropic` \| `openai` \| `none` (default: auto-detect) |
-| `AI_MODEL` | Model override (defaults: `claude-opus-4-8` / `gpt-4o-mini`) |
+| `OPENROUTER_API_KEY` | Free option — get a key at [openrouter.ai/keys](https://openrouter.ai/keys) and use a `:free` model |
+| `AI_PROVIDER` | Force `anthropic` \| `openai` \| `openrouter` \| `none` (default: auto-detect) |
+| `AI_MODEL` | Model override (defaults: `claude-opus-4-8` / `gpt-4o-mini` / `meta-llama/llama-3.3-70b-instruct:free`) |
 
 Restart `npm run dev` after editing. Visit `/api/status` to confirm AI mode is
 active. The engine's safety verdict always wins, even with AI on.

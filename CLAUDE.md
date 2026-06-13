@@ -95,9 +95,11 @@ red flag, EV excludes belt causes, confidence bounds, etc.).
 
 ## AI layer rules
 
-- Env: `AI_PROVIDER` / `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `AI_MODEL`.
-  No key → `enhanceWithAI` returns the heuristic result untouched; the app
-  must never *require* AI.
+- Env: `AI_PROVIDER` / `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` /
+  `OPENROUTER_API_KEY` / `AI_MODEL`. No key → `enhanceWithAI` returns the
+  heuristic result untouched; the app must never *require* AI.
+  OpenRouter (`ai/openrouter.ts`) is the zero-cost path: OpenAI-compatible
+  fetch with tolerant JSON extraction for `:free` models.
 - The LLM may only rewrite explanations for causes the engine ranked
   (schema enum restricts ids) and may never relax the safety verdict —
   the merge in `ai/enhance.ts` enforces this; keep it that way.

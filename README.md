@@ -68,9 +68,10 @@ All optional — **the app runs fully without any key** (heuristic mode).
 
 | Variable | Effect |
 |---|---|
-| `ANTHROPIC_API_KEY` | Enables Claude-powered explanations (recommended) |
+| `ANTHROPIC_API_KEY` | Enables Claude-powered explanations |
 | `OPENAI_API_KEY` | Alternative provider |
-| `AI_PROVIDER` | Force `anthropic` \| `openai` \| `none` (default: auto-detect) |
+| `OPENROUTER_API_KEY` | Free option — use a [`:free` model](https://openrouter.ai/models?q=free) via [OpenRouter](https://openrouter.ai) |
+| `AI_PROVIDER` | Force `anthropic` \| `openai` \| `openrouter` \| `none` (default: auto-detect) |
 | `AI_MODEL` | Model override |
 
 Locally: `cp frontend/.env.example frontend/.env.local` and uncomment what you

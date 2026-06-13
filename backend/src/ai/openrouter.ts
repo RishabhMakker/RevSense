@@ -6,7 +6,7 @@ import {
   type AIEnhancement,
 } from "./prompt";
 
-const DEFAULT_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
+const DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b:free";
 
 /** Free-tier models sometimes wrap JSON in markdown fences or add prose
  *  around it despite response_format — salvage the object before parsing. */

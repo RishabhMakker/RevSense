@@ -53,7 +53,7 @@ Then open `frontend/.env.local` and uncomment one of:
 | `OPENAI_API_KEY` | Alternative provider |
 | `OPENROUTER_API_KEY` | Free option — get a key at [openrouter.ai/keys](https://openrouter.ai/keys) and use a `:free` model |
 | `AI_PROVIDER` | Force `anthropic` \| `openai` \| `openrouter` \| `none` (default: auto-detect) |
-| `AI_MODEL` | Model override (defaults: `claude-opus-4-8` / `gpt-4o-mini` / `meta-llama/llama-3.3-70b-instruct:free`) |
+| `AI_MODEL` | Model override (defaults: `claude-opus-4-8` / `gpt-4o-mini` / `nvidia/nemotron-3-super-120b-a12b:free`) |
 
 Restart `npm run dev` after editing. Visit `/api/status` to confirm AI mode is
 active. The engine's safety verdict always wins, even with AI on.

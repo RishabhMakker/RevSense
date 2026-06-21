@@ -9,6 +9,7 @@ import {
   ClipboardCopy,
   Cpu,
   Info,
+  Languages,
   ListChecks,
   MessageSquareQuote,
   RotateCcw,
@@ -16,9 +17,28 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import type { DiagnosisResult } from "@revsense/backend";
+import { SOUND_CONTEXT_LABELS, type DiagnosisResult } from "@revsense/backend";
 import { SEVERITY_STYLES, VERDICT_STYLES } from "@/lib/ui";
 import { CauseCard } from "./CauseCard";
+
+/** Friendlier wording for the engine's canonical sound types (display only). */
+const SOUND_TYPE_LABELS: Record<string, string> = {
+  click: "clicking",
+  pop: "popping",
+  tick: "ticking",
+  knock: "knocking",
+  grind: "grinding",
+  squeal: "squealing",
+  chirp: "chirping",
+  rattle: "rattling",
+  clunk: "clunking",
+  hiss: "hissing",
+  whine: "whining",
+  hum: "humming",
+  rumble: "rumbling",
+  creak: "creaking",
+  vibration: "vibration",
+};
 
 function SideCard({
   icon: Icon,
@@ -152,6 +172,49 @@ export function ResultsView({
               </p>
             </div>
           ))}
+        </motion.div>
+      )}
+
+      {/* How the AI read the description (interpreter contribution) */}
+      {result.interpretation && (
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.05] p-5"
+        >
+          <p className="flex items-center gap-2 text-sm font-semibold text-amber-100">
+            <Languages className="h-4 w-4 text-amber-400" /> How we read your
+            description
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+            {result.interpretation.rationale}
+          </p>
+          {(result.interpretation.soundTypes.length > 0 ||
+            result.interpretation.contexts.length > 0) && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {result.interpretation.soundTypes.map((s) => (
+                <span
+                  key={`s-${s}`}
+                  className="rounded-full border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-200"
+                >
+                  heard as {SOUND_TYPE_LABELS[s] ?? s}
+                </span>
+              ))}
+              {result.interpretation.contexts.map((c) => (
+                <span
+                  key={`c-${c}`}
+                  className="rounded-full border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-200"
+                >
+                  {SOUND_CONTEXT_LABELS[c]}
+                </span>
+              ))}
+            </div>
+          )}
+          <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">
+            AI mapped your wording to these signals so the ranking below
+            wouldn&apos;t miss them. The engine still did all the scoring.
+          </p>
         </motion.div>
       )}
 

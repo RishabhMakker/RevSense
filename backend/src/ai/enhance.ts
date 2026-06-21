@@ -3,6 +3,7 @@ import type { AIEnhancement } from "./prompt";
 import { enhanceWithAnthropic } from "./anthropic";
 import { enhanceWithOpenAI } from "./openai";
 import { enhanceWithOpenRouter } from "./openrouter";
+import { interpretSymptom, type InterpretedSignals } from "./interpret";
 
 /**
  * Provider resolution from environment variables — no key, no AI, no error:
@@ -69,6 +70,35 @@ export function getAIStatus(): {
     configured: provider !== null,
     providerLabel: provider?.label ?? null,
   };
+}
+
+/**
+ * Translate the user's free-text symptom into the engine's controlled
+ * vocabulary BEFORE scoring, so unusual wording doesn't lose good matches.
+ * No key, failure, or empty result → null, and the engine runs on the
+ * user's literal words exactly as before.
+ */
+export async function interpretWithAI(
+  req: DiagnoseRequest
+): Promise<InterpretedSignals | null> {
+  const provider = resolveProvider();
+  if (!provider) return null;
+  try {
+    const signals = await interpretSymptom(
+      { name: provider.name, apiKey: provider.apiKey, model: provider.model },
+      req
+    );
+    if (signals.soundTypes.length === 0 && signals.contexts.length === 0) {
+      return null;
+    }
+    return signals;
+  } catch (err) {
+    console.error(
+      `[revsense] AI interpretation failed (${provider.name}), using literal text only:`,
+      err instanceof Error ? err.message : err
+    );
+    return null;
+  }
 }
 
 const clip = (s: string, max: number) =>

@@ -20,6 +20,7 @@ import {
 import { detectSounds, matchPhrases, normalizeText, type SoundMatch } from "./lexicon";
 import { KNOWLEDGE_BASE, type KnownIssue } from "./knowledgeBase";
 import { detectRedFlags } from "./redFlags";
+import type { InterpretedSignals } from "./ai/interpret";
 
 /* ------------------------------------------------------------------ */
 /* Scoring weights — tuned by the test suite in backend/tests          */
@@ -84,15 +85,27 @@ function scoreIssue(
   const evidence: string[] = [];
   let hasDirectEvidence = false;
 
-  // 1. Canonical sound-type matches
+  // 1. Canonical sound-type matches (literal text matches + AI-inferred ones
+  //    score identically; only the evidence wording differs so we never claim
+  //    the user "described" a word they didn't type).
   const soundHits = sounds.filter((s) => issue.sounds.includes(s.type));
   if (soundHits.length > 0) {
     score += Math.min(soundHits.length * W.soundMatch, W.soundCap);
     hasDirectEvidence = true;
-    const words = soundHits.map((s) => `"${s.matchedWord}"`);
-    evidence.push(
-      `You described ${listToProse(words)} — a signature sound for this issue.`
-    );
+    const literalHits = soundHits.filter((s) => !s.inferred);
+    const inferredHits = soundHits.filter((s) => s.inferred);
+    if (literalHits.length > 0) {
+      const words = literalHits.map((s) => `"${s.matchedWord}"`);
+      evidence.push(
+        `You described ${listToProse(words)} — a signature sound for this issue.`
+      );
+    }
+    if (inferredHits.length > 0) {
+      const types = inferredHits.map((s) => `${s.type}-type`);
+      evidence.push(
+        `Your description reads as a ${listToProse(types)} sound — a signature sound for this issue.`
+      );
+    }
   }
 
   // 2. Phrase matches
@@ -337,13 +350,37 @@ function buildMechanicScript(
 /* Public API                                                           */
 /* ------------------------------------------------------------------ */
 
-export function diagnose(req: DiagnoseRequest): DiagnosisResult {
+export function diagnose(
+  req: DiagnoseRequest,
+  interpreted?: InterpretedSignals | null
+): DiagnosisResult {
   const text = normalizeText(req.symptomText);
-  const sounds = detectSounds(text);
-  const redFlags = detectRedFlags(text, req.contexts, sounds);
+  const literalSounds = detectSounds(text);
+
+  // Merge AI-interpreted signals into the inputs the engine scores on. The AI
+  // can only add canonical sounds/contexts the literal matching missed — it
+  // never removes anything and never ranks. Safety is deliberately excluded
+  // (see redFlags below): a stop-driving alert must trace to the user's words.
+  const literalTypes = new Set(literalSounds.map((s) => s.type));
+  const inferredSounds: SoundMatch[] = (interpreted?.soundTypes ?? [])
+    .filter((t) => !literalTypes.has(t))
+    .map((t) => ({ type: t, matchedWord: t, inferred: true }));
+  const sounds = [...literalSounds, ...inferredSounds];
+
+  const addedContexts = (interpreted?.contexts ?? []).filter(
+    (c) => !req.contexts.includes(c)
+  );
+  const effReq: DiagnoseRequest =
+    addedContexts.length > 0
+      ? { ...req, contexts: [...req.contexts, ...addedContexts] }
+      : req;
+
+  // Red flags run on the user's LITERAL text and contexts only — the AI
+  // interpreter must not be able to manufacture a stop-driving verdict.
+  const redFlags = detectRedFlags(text, req.contexts, literalSounds);
 
   const scoredAll = KNOWLEDGE_BASE.map((issue) =>
-    scoreIssue(issue, req, text, sounds)
+    scoreIssue(issue, effReq, text, sounds)
   )
     .filter((s): s is ScoredIssue => s !== null)
     .sort((a, b) => b.score - a.score);
@@ -384,6 +421,17 @@ export function diagnose(req: DiagnoseRequest): DiagnosisResult {
       : "The signals here are weaker than usual — treat the ranking as a rough starting point."
     : null;
 
+  // Surface the interpreter's contribution only when it genuinely added
+  // signals the literal matching missed.
+  const interpretation =
+    interpreted && (inferredSounds.length > 0 || addedContexts.length > 0)
+      ? {
+          soundTypes: inferredSounds.map((s) => s.type),
+          contexts: addedContexts,
+          rationale: interpreted.rationale,
+        }
+      : null;
+
   return {
     requestId: globalThis.crypto.randomUUID(),
     generatedAt: new Date().toISOString(),
@@ -394,14 +442,16 @@ export function diagnose(req: DiagnoseRequest): DiagnosisResult {
     redFlags,
     causes,
     whatToCheckFirst,
-    mechanicScript: buildMechanicScript(req, causes, sounds),
+    mechanicScript: buildMechanicScript(effReq, causes, sounds),
     audioSummary: req.audio ? buildAudioSummary(req.audio) : null,
     inputQuality: {
-      soundWordsDetected: sounds.map((s) => s.matchedWord),
-      contextCount: req.contexts.length,
+      // Honest about literal matches only; inferred signals live in `interpretation`.
+      soundWordsDetected: literalSounds.map((s) => s.matchedWord),
+      contextCount: effReq.contexts.length,
       hasAudio: Boolean(req.audio),
       note,
     },
+    interpretation,
     disclaimer: DISCLAIMER,
   };
 }

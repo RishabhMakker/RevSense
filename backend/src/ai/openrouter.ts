@@ -31,7 +31,7 @@ export async function enhanceWithOpenRouter(
 ): Promise<AIEnhancement> {
   const causeIds = result.causes.map((c) => c.id);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 45_000);
+  const timer = setTimeout(() => controller.abort(), 40_000);
 
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {

@@ -320,3 +320,100 @@ describe("request validation", () => {
     expect(diagnoseRequestSchema.safeParse(DEMO_REQUEST).success).toBe(true);
   });
 });
+
+describe("AI symptom interpreter (input layer)", () => {
+  // Figurative wording the prefix-stem lexicon cannot match: no "click",
+  // "pop", etc. appears literally.
+  const figurative =
+    "It sounds like a pack of cards stuck in bicycle spokes, mostly when I pull out of a parking spot.";
+  const findCause = (r: ReturnType<typeof diagnose>, id: string) =>
+    r.causes.find((c) => c.id === id);
+
+  it("promotes a cause the literal lexicon missed when AI infers the sound", () => {
+    const baseReq = makeRequest({
+      symptomText: figurative,
+      contexts: ["low_speed_turning", "turning_right"],
+    });
+    const without = diagnose(baseReq);
+    const withInterp = diagnose(baseReq, {
+      soundTypes: ["click", "pop"],
+      contexts: [],
+      rationale: "Read 'cards in spokes' as rhythmic clicking and popping.",
+    });
+
+    // The literal run can't see any sound word; the interpreted run can.
+    expect(without.inputQuality.soundWordsDetected).toHaveLength(0);
+
+    // cv-axle-wear is only a mid-pack guess on context alone, but rises to the
+    // top once the AI recovers the clicking the lexicon couldn't match.
+    const cvBefore = findCause(without, "cv-axle-wear")!;
+    const cvAfter = findCause(withInterp, "cv-axle-wear")!;
+    expect(withInterp.causes[0]?.id).toBe("cv-axle-wear");
+    expect(cvAfter.confidence).toBeGreaterThan(cvBefore.confidence);
+    expect(cvAfter.rank).toBeLessThan(cvBefore.rank);
+  });
+
+  it("surfaces what it inferred in the interpretation field, phrased honestly", () => {
+    const result = diagnose(
+      makeRequest({ symptomText: figurative, contexts: ["low_speed_turning"] }),
+      {
+        soundTypes: ["click"],
+        contexts: ["acceleration"],
+        rationale: "Read 'cards in spokes' as clicking.",
+      }
+    );
+    expect(result.interpretation?.soundTypes).toContain("click");
+    expect(result.interpretation?.contexts).toContain("acceleration");
+    expect(result.interpretation?.rationale).toBeTruthy();
+    // Honest wording: never claims the user "described" a word they didn't type.
+    const top = result.causes[0]!;
+    expect(top.whyLikely.join(" ")).not.toMatch(/you described/i);
+  });
+
+  it("does not surface interpretation when the AI adds nothing new", () => {
+    const result = diagnose(
+      makeRequest({
+        symptomText: "A clear clicking sound.",
+        contexts: ["low_speed_turning"],
+      }),
+      // Both already covered by the literal text / selected contexts.
+      { soundTypes: ["click"], contexts: ["low_speed_turning"], rationale: "x" }
+    );
+    expect(result.interpretation).toBeNull();
+  });
+
+  it("SAFETY: an AI-inferred grind cannot manufacture a stop-driving red flag", () => {
+    // No "grind"/"metal-on-metal" appears literally; AI infers grinding.
+    const req = makeRequest({
+      symptomText: "A harsh noise comes from the front when I slow to a stop.",
+      contexts: ["braking"],
+    });
+    const result = diagnose(req, {
+      soundTypes: ["grind"],
+      contexts: ["braking"],
+      rationale: "Read 'harsh noise while slowing' as grinding.",
+    });
+    // The red flag (hard stop-driving alert) must trace to the user's words.
+    expect(result.redFlags.map((f) => f.id)).not.toContain("brake-grinding");
+
+    // Contrast: the SAME wording typed literally DOES raise the red flag.
+    const literal = diagnose(
+      makeRequest({
+        symptomText: "A harsh grinding noise when I slow to a stop.",
+        contexts: ["braking"],
+      })
+    );
+    expect(literal.redFlags.map((f) => f.id)).toContain("brake-grinding");
+  });
+
+  it("is a no-op when no interpretation is supplied (back-compat)", () => {
+    const req = makeRequest({
+      symptomText: "A clicking sound when turning at low speed.",
+      contexts: ["low_speed_turning"],
+    });
+    const a = diagnose(req);
+    const b = diagnose(req, null);
+    expect(b.causes.map((c) => c.id)).toEqual(a.causes.map((c) => c.id));
+    expect(b.interpretation).toBeNull();
+  });
+});

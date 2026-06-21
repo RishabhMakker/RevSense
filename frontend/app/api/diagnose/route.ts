@@ -3,6 +3,7 @@ import {
   diagnose,
   diagnoseRequestSchema,
   enhanceWithAI,
+  interpretWithAI,
 } from "@revsense/backend";
 
 export const runtime = "nodejs";
@@ -35,7 +36,11 @@ export async function POST(request: Request) {
   }
 
   // Nothing is persisted: the request is scored in-memory and discarded.
-  const heuristic = diagnose(parsed.data);
+  // AI (optional) first translates the free text into the engine's vocabulary
+  // so the *ranking* benefits from it; the engine still does all the scoring.
+  const interpreted = await interpretWithAI(parsed.data);
+  const heuristic = diagnose(parsed.data, interpreted);
+  // Then AI (optional) rewrites the explanations for the ranked causes.
   const result = await enhanceWithAI(parsed.data, heuristic);
   return NextResponse.json(result);
 }

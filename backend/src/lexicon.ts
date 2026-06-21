@@ -45,6 +45,9 @@ const SOUND_STEMS: Record<SoundType, string[]> = {
 export interface SoundMatch {
   type: SoundType;
   matchedWord: string;
+  /** True when the AI interpreter inferred this sound rather than the user
+   *  literally typing a matching word. Affects evidence phrasing only. */
+  inferred?: boolean;
 }
 
 /** Lowercase, collapse punctuation to spaces, squeeze whitespace. */

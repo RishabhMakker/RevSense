@@ -239,6 +239,19 @@ export interface InputQuality {
   note: string | null;
 }
 
+/**
+ * How the optional AI interpreter read the free-text description into the
+ * engine's controlled vocabulary before scoring. Shown to the user for
+ * transparency; the engine still does all ranking and the safety verdict.
+ */
+export interface SymptomInterpretation {
+  /** Canonical sound types inferred from the text the lexicon didn't catch. */
+  soundTypes: string[];
+  /** Driving contexts inferred from the text beyond what the user selected. */
+  contexts: SoundContext[];
+  rationale: string;
+}
+
 export interface DiagnosisResult {
   requestId: string;
   generatedAt: string;
@@ -253,6 +266,12 @@ export interface DiagnosisResult {
   mechanicScript: string;
   audioSummary: AudioSummary | null;
   inputQuality: InputQuality;
+  /**
+   * Present only when the AI interpreter added sound types or contexts the
+   * literal text matching missed. null in heuristic mode or when the AI
+   * found nothing beyond the user's own words.
+   */
+  interpretation: SymptomInterpretation | null;
   /**
    * Extra safety guidance from the LLM in AI-enhanced mode. The overall
    * verdict (severity / safe-to-drive) is always computed by the rule engine

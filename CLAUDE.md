@@ -136,6 +136,9 @@ audio to the server — only the `AudioFeatures` object crosses the wire.
 - Commit atomically: one logical change per commit, with a clear message.
   Split unrelated edits (deps, docs, features) into separate commits rather
   than batching them together.
+- Never read, print, cat, or otherwise surface the contents of `.env*` files
+  (or any other secret-bearing file). They contain live API keys; treat them
+  as off-limits even during security scans.
 - Verify UI changes via the preview server (`.claude/launch.json` at the
   parent folder defines a `revsense` config) — the demo flow
   `/diagnose?demo=1` exercises the whole pipeline without a microphone.

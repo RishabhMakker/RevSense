@@ -133,6 +133,9 @@ audio to the server — only the `AudioFeatures` object crosses the wire.
   test if it has a distinctive signature.
 - Keep `npm run build`, `npm test`, `npm run typecheck`, `npm run lint`
   green before finishing any change.
+- Commit atomically: one logical change per commit, with a clear message.
+  Split unrelated edits (deps, docs, features) into separate commits rather
+  than batching them together.
 - Verify UI changes via the preview server (`.claude/launch.json` at the
   parent folder defines a `revsense` config) — the demo flow
   `/diagnose?demo=1` exercises the whole pipeline without a microphone.

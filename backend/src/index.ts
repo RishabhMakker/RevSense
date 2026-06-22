@@ -24,3 +24,4 @@ export { detectRedFlags } from "./redFlags";
 export { DEMO_REQUEST } from "./demo";
 export { enhanceWithAI, getAIStatus, interpretWithAI } from "./ai/enhance";
 export type { InterpretedSignals } from "./ai/interpret";
+export { EXPLAIN_CAUSE_LIMIT } from "./ai/prompt";

@@ -2,6 +2,7 @@ import type { DiagnoseRequest, DiagnosisResult } from "../schemas";
 import {
   buildResponseSchema,
   buildUserPrompt,
+  causesToExplain,
   SYSTEM_PROMPT,
   type AIEnhancement,
 } from "./prompt";
@@ -18,7 +19,7 @@ export async function enhanceWithOpenAI(
   result: DiagnosisResult,
   model?: string
 ): Promise<AIEnhancement> {
-  const causeIds = result.causes.map((c) => c.id);
+  const causeIds = causesToExplain(result.causes).map((c) => c.id);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 40_000);
 

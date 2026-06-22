@@ -1,4 +1,4 @@
-import type { DiagnoseRequest, DiagnosisResult } from "../schemas";
+import type { DiagnoseRequest, DiagnosisResult, RankedCause } from "../schemas";
 import { SOUND_CONTEXT_LABELS } from "../schemas";
 
 /**
@@ -8,6 +8,19 @@ import { SOUND_CONTEXT_LABELS } from "../schemas";
  * never invents certainty, never overrides the engine's safety verdict, and
  * may only comment on causes the engine already ranked.
  */
+
+/**
+ * How many top causes the LLM is asked to explain. The response size (and so
+ * the latency) is dominated by the per-cause prose, so capping this keeps the
+ * call inside the serverless time budget on slow/free models. The remaining
+ * lower-ranked causes simply keep their engine-written description.
+ */
+export const EXPLAIN_CAUSE_LIMIT = 3;
+
+/** The subset of ranked causes the LLM should write explanations for. */
+export function causesToExplain(causes: RankedCause[]): RankedCause[] {
+  return causes.slice(0, EXPLAIN_CAUSE_LIMIT);
+}
 
 export interface AIEnhancement {
   summary: string;
@@ -105,7 +118,9 @@ export function buildUserPrompt(
       ].join("\n")
     : "(no audio provided)";
 
-  const causes = result.causes
+  // Only the top causes are sent for explanation — keeps the response small
+  // enough to finish within the time budget on slow models.
+  const causes = causesToExplain(result.causes)
     .map(
       (c) =>
         `${c.rank}. [id: ${c.id}] ${c.title} — ${c.confidence}% confidence, severity ${c.severity}, category ${c.categoryLabel}.\n   Engine evidence: ${c.whyLikely.join(" | ") || "weak match"}`

@@ -10,7 +10,7 @@ import {
   Sparkles,
   Wrench,
 } from "lucide-react";
-import type { RankedCause } from "@revsense/backend";
+import { EXPLAIN_CAUSE_LIMIT, type RankedCause } from "@revsense/backend";
 import { confidenceColor, SEVERITY_STYLES } from "@/lib/ui";
 
 function DetailBlock({
@@ -114,7 +114,7 @@ export function CauseCard({
                     {cause.aiNote}
                   </p>
                 </div>
-              ) : explaining ? (
+              ) : explaining && cause.rank <= EXPLAIN_CAUSE_LIMIT ? (
                 <div className="rounded-xl border border-amber-400/20 bg-amber-500/[0.06] p-4">
                   <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-300">
                     <Sparkles className="h-3.5 w-3.5 animate-pulse" /> AI explanation

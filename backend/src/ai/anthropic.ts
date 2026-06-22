@@ -3,6 +3,7 @@ import type { DiagnoseRequest, DiagnosisResult } from "../schemas";
 import {
   buildResponseSchema,
   buildUserPrompt,
+  causesToExplain,
   SYSTEM_PROMPT,
   type AIEnhancement,
 } from "./prompt";
@@ -21,7 +22,7 @@ export async function enhanceWithAnthropic(
     maxRetries: 1,
   });
 
-  const causeIds = result.causes.map((c) => c.id);
+  const causeIds = causesToExplain(result.causes).map((c) => c.id);
   const response = await client.messages.create({
     model: model || DEFAULT_MODEL,
     max_tokens: 4096,

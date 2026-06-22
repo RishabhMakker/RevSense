@@ -18,7 +18,7 @@ export async function enhanceWithAnthropic(
 ): Promise<AIEnhancement> {
   const client = new Anthropic({
     apiKey,
-    timeout: 40_000,
+    timeout: 50_000,
     maxRetries: 1,
   });
 

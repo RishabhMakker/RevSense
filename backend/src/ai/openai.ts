@@ -21,7 +21,7 @@ export async function enhanceWithOpenAI(
 ): Promise<AIEnhancement> {
   const causeIds = causesToExplain(result.causes).map((c) => c.id);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 40_000);
+  const timer = setTimeout(() => controller.abort(), 50_000);
 
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {

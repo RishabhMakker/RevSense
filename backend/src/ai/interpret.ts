@@ -137,7 +137,7 @@ async function interpretViaAnthropic(
   req: DiagnoseRequest,
   model?: string
 ): Promise<unknown> {
-  const client = new Anthropic({ apiKey, timeout: 15_000, maxRetries: 1 });
+  const client = new Anthropic({ apiKey, timeout: 20_000, maxRetries: 1 });
   const response = await client.messages.create({
     model: model || DEFAULT_MODELS.anthropic,
     max_tokens: 1024,
@@ -160,7 +160,7 @@ async function interpretViaOpenAICompat(
   model?: string
 ): Promise<unknown> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15_000);
+  const timer = setTimeout(() => controller.abort(), 20_000);
   try {
     const res = await fetch(
       `${OPENAI_COMPAT_BASE[provider]}/chat/completions`,

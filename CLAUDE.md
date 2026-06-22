@@ -42,7 +42,7 @@ backend/src/
     openai.ts       # fetch-based OpenAI provider
     enhance.ts      # env resolution, defensive merge, graceful fallback
   index.ts          # public exports — frontend imports ONLY from here
-backend/tests/engine.test.ts   # 25 vitest tests pinning engine behavior
+backend/tests/engine.test.ts   # 30 vitest tests pinning engine behavior
 
 frontend/app/
   page.tsx                # landing

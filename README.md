@@ -62,7 +62,7 @@ Next.js route handlers. Domain logic lives in `@revsense/backend`, a
 pure-TypeScript workspace package (zod schemas, knowledge base, scoring
 engine, AI providers) that the route handlers import — front and back stay
 separate while shipping as a single deploy. Audio uses the Web Audio API with
-a hand-written FFT. The engine is covered by 25 Vitest tests.
+a hand-written FFT. The engine is covered by 30 Vitest tests.
 
 ## Limitations & safety
 

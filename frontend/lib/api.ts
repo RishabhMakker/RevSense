@@ -30,6 +30,24 @@ export async function requestDiagnosis(
   return (await res.json()) as DiagnosisResult;
 }
 
+/**
+ * Second-stage call: ask the LLM to rewrite explanations for an
+ * already-ranked result. Runs in the background after the diagnosis renders.
+ * On any failure the caller keeps the heuristic result, so this throws freely.
+ */
+export async function requestExplanation(
+  req: DiagnoseRequest,
+  result: DiagnosisResult
+): Promise<DiagnosisResult> {
+  const res = await fetch("/api/explain", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ request: req, result }),
+  });
+  if (!res.ok) throw new Error("Explanation request failed.");
+  return (await res.json()) as DiagnosisResult;
+}
+
 export interface AIStatus {
   aiConfigured: boolean;
   aiProviderLabel: string | null;

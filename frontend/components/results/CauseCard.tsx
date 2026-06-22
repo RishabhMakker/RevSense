@@ -35,9 +35,11 @@ function DetailBlock({
 export function CauseCard({
   cause,
   defaultOpen = false,
+  explaining = false,
 }: {
   cause: RankedCause;
   defaultOpen?: boolean;
+  explaining?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const severity = SEVERITY_STYLES[cause.severity];
@@ -103,7 +105,7 @@ export function CauseCard({
                 {cause.description}
               </p>
 
-              {cause.aiNote && (
+              {cause.aiNote ? (
                 <div className="rounded-xl border border-amber-400/20 bg-amber-500/[0.06] p-4">
                   <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-300">
                     <Sparkles className="h-3.5 w-3.5" /> AI explanation
@@ -112,7 +114,18 @@ export function CauseCard({
                     {cause.aiNote}
                   </p>
                 </div>
-              )}
+              ) : explaining ? (
+                <div className="rounded-xl border border-amber-400/20 bg-amber-500/[0.06] p-4">
+                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-300">
+                    <Sparkles className="h-3.5 w-3.5 animate-pulse" /> AI explanation
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    <div className="h-2.5 w-full animate-pulse rounded bg-white/10" />
+                    <div className="h-2.5 w-11/12 animate-pulse rounded bg-white/10" />
+                    <div className="h-2.5 w-3/4 animate-pulse rounded bg-white/10" />
+                  </div>
+                </div>
+              ) : null}
 
               <DetailBlock icon={CheckCircle2} title="Why this fits your report">
                 <ul className="space-y-1.5">

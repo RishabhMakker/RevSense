@@ -61,9 +61,11 @@ function SideCard({
 
 export function ResultsView({
   result,
+  explaining = false,
   onReset,
 }: {
   result: DiagnosisResult;
+  explaining?: boolean;
   onReset: () => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -100,7 +102,12 @@ export function ResultsView({
         </div>
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-300">
-            {result.mode === "ai-enhanced" ? (
+            {explaining ? (
+              <>
+                <Sparkles className="h-3.5 w-3.5 animate-pulse text-amber-400" />
+                Writing AI explanation…
+              </>
+            ) : result.mode === "ai-enhanced" ? (
               <>
                 <Sparkles className="h-3.5 w-3.5 text-amber-400" />
                 AI-enhanced{result.aiProviderLabel ? ` · ${result.aiProviderLabel}` : ""}
@@ -237,6 +244,7 @@ export function ResultsView({
               key={cause.id}
               cause={cause}
               defaultOpen={cause.rank === 1}
+              explaining={explaining}
             />
           ))}
         </div>

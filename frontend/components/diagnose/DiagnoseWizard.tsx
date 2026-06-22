@@ -9,7 +9,12 @@ import {
   type DiagnosisResult,
   type SoundContext,
 } from "@revsense/backend";
-import { fetchAIStatus, requestDiagnosis, type AIStatus } from "@/lib/api";
+import {
+  fetchAIStatus,
+  requestDiagnosis,
+  requestExplanation,
+  type AIStatus,
+} from "@/lib/api";
 import { AudioStep } from "./AudioStep";
 import { VehicleStep } from "./VehicleStep";
 import { SymptomStep } from "./SymptomStep";
@@ -70,6 +75,7 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
   );
   const [phase, setPhase] = useState<"form" | "scanning" | "results">("form");
   const [result, setResult] = useState<DiagnosisResult | null>(null);
+  const [explaining, setExplaining] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [aiStatus, setAIStatus] = useState<AIStatus>({
     aiConfigured: false,
@@ -129,6 +135,22 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
       setResult(diagnosis);
       setPhase("results");
       window.scrollTo({ top: 0, behavior: "smooth" });
+
+      // Fetch the prose explanation in the background so it fills in without
+      // holding up the ranking. Failure leaves the heuristic result as-is.
+      if (
+        aiStatus.aiConfigured &&
+        diagnosis.mode === "heuristic" &&
+        diagnosis.causes.length > 0
+      ) {
+        setExplaining(true);
+        requestExplanation(request, diagnosis)
+          .then(setResult)
+          .catch(() => {
+            /* keep the heuristic result */
+          })
+          .finally(() => setExplaining(false));
+      }
     } catch (err) {
       setPhase("form");
       setSubmitError(
@@ -144,6 +166,7 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
     setSymptomText("");
     setContexts([]);
     setResult(null);
+    setExplaining(false);
     setSubmitError(null);
     setStep(0);
     setPhase("form");
@@ -162,7 +185,9 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
   }
 
   if (phase === "results" && result) {
-    return <ResultsView result={result} onReset={reset} />;
+    return (
+      <ResultsView result={result} explaining={explaining} onReset={reset} />
+    );
   }
 
   return (

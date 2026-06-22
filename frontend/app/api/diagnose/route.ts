@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import {
   diagnose,
   diagnoseRequestSchema,
-  enhanceWithAI,
   interpretWithAI,
 } from "@revsense/backend";
 
 export const runtime = "nodejs";
-// Allow headroom for the optional LLM call on Vercel.
+// Allow headroom for the optional interpret LLM call on Vercel. The heavier
+// explanation step runs in a separate /api/explain request so the two AI
+// calls never share one serverless time budget.
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
@@ -38,9 +39,9 @@ export async function POST(request: Request) {
   // Nothing is persisted: the request is scored in-memory and discarded.
   // AI (optional) first translates the free text into the engine's vocabulary
   // so the *ranking* benefits from it; the engine still does all the scoring.
+  // The prose-explanation step is deferred to /api/explain so this response
+  // returns the moment the diagnosis is ready.
   const interpreted = await interpretWithAI(parsed.data);
-  const heuristic = diagnose(parsed.data, interpreted);
-  // Then AI (optional) rewrites the explanations for the ranked causes.
-  const result = await enhanceWithAI(parsed.data, heuristic);
+  const result = diagnose(parsed.data, interpreted);
   return NextResponse.json(result);
 }

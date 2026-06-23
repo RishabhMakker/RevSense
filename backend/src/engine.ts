@@ -11,7 +11,6 @@ import {
   type DiagnoseRequest,
   type DiagnosisOverall,
   type DiagnosisResult,
-  type IssueCategory,
   type RankedCause,
   type RedFlag,
   type SafeToDrive,

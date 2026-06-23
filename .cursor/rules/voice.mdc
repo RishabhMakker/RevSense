@@ -1,0 +1,15 @@
+---
+description: RevSense UI copy & voice rules
+globs:
+  - "frontend/**/*.tsx"
+  - "backend/src/**/*.ts"
+alwaysApply: true
+---
+
+RevSense is a car diagnostic/analysis tool — a recording is one input, not the headline.
+User-facing copy must never surface implementation internals: AI provider names
+(OpenRouter/Anthropic/OpenAI → "AI"), engine pattern counts ("29 known failure patterns"),
+DSP jargon (FFT, spectral centroid, "acoustic clues"), or "rule engine". Privacy = one line:
+"We don't save your recordings or results." Voice: Trustworthy · Clear · Practical — active,
+plain, no buzzwords. Terminology: "diagnosis"/"your report", not "triage report".
+Full rule: see `AGENTS.md`.

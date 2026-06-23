@@ -114,6 +114,14 @@ hints (`rhythmic_ticking`, `tonal_whine`, …). The UI labels these "basic
 acoustic clues". Never market this as a trained model, and never send raw
 audio to the server — only the `AudioFeatures` object crosses the wire.
 
+## UI copy & voice
+
+RevSense reads as a **car diagnostic/analysis tool** (a recording is one input, not the
+headline). Never surface implementation internals in user-facing copy — AI provider names,
+engine pattern counts, DSP jargon, "rule engine" — including backend-generated strings
+(disclaimer, cause reasons). Privacy = one line: "We don't save your recordings or results."
+Full rule + ban-list: `AGENTS.md`.
+
 ## Known limitations / future work
 
 - No drivetrain-layout awareness (U-joint can rank for a FWD car).

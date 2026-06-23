@@ -224,7 +224,7 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
         <button
           type="button"
           onClick={loadDemo}
-          className="ml-3 flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-400 transition-colors hover:border-amber-400/30 hover:text-amber-200"
+          className="ml-3 flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-400 transition-colors hover:border-amber-400/30 hover:text-amber-200"
           title="Prefill the clicking-while-turning demo scenario"
         >
           <FlaskConical className="h-3.5 w-3.5" /> Demo
@@ -275,7 +275,7 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
             type="button"
             onClick={() => setStep((s) => Math.max(0, s - 1))}
             disabled={step === 0}
-            className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm text-zinc-400 transition-colors hover:bg-white/5 hover:text-white disabled:invisible"
+            className="flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm text-zinc-400 transition-colors hover:bg-white/5 hover:text-white disabled:invisible"
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
@@ -285,7 +285,7 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
               type="button"
               onClick={() => setStep((s) => s + 1)}
               disabled={!stepValid[step]}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-2.5 text-sm font-semibold text-ink-950 shadow-[0_0_24px_-8px_rgba(245,158,11,0.7)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+              className="flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-2.5 text-sm font-semibold text-ink-950 shadow-[0_0_24px_-8px_rgba(245,158,11,0.7)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
             >
               Continue <ArrowRight className="h-4 w-4" />
             </button>
@@ -294,7 +294,7 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
               type="button"
               onClick={() => void submit()}
               disabled={!canSubmit}
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-7 py-2.5 text-sm font-semibold text-ink-950 shadow-[0_0_28px_-8px_rgba(245,158,11,0.8)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+              className="flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-7 py-2.5 text-sm font-semibold text-ink-950 shadow-[0_0_28px_-8px_rgba(245,158,11,0.8)] transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
             >
               <Play className="h-4 w-4 fill-current" /> Run diagnosis
             </button>

@@ -55,7 +55,7 @@ export function SymptomStep({
           rows={4}
           maxLength={2000}
           placeholder='e.g. "I hear a clicking or popping sound when turning the steering wheel at low speed, like pulling out of a parking spot."'
-          className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm leading-relaxed text-white placeholder:text-zinc-400 outline-none transition-colors focus:border-amber-400/50 focus:bg-white/[0.06]"
+          className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-base leading-relaxed text-white placeholder:text-zinc-400 outline-none transition-colors focus:border-amber-400/50 focus:bg-white/[0.06] sm:text-sm"
         />
         <div className="mt-1 flex items-center justify-between text-xs text-zinc-600">
           <span>{symptomText.trim().length < 10 ? "At least 10 characters" : " "}</span>
@@ -67,7 +67,7 @@ export function SymptomStep({
               key={example}
               type="button"
               onClick={() => onSymptomChange(example)}
-              className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs text-zinc-400 transition-colors hover:border-amber-400/30 hover:text-amber-200"
+              className="flex min-h-11 items-center rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs text-zinc-400 transition-colors hover:border-amber-400/30 hover:text-amber-200"
             >
               {example}
             </button>
@@ -89,7 +89,7 @@ export function SymptomStep({
                 type="button"
                 onClick={() => toggleContext(ctx)}
                 aria-pressed={active}
-                className={`rounded-xl border px-4 py-2 text-sm transition-all ${
+                className={`min-h-11 rounded-xl border px-4 py-2 text-sm transition-all ${
                   active
                     ? "border-amber-400/60 bg-amber-500/15 text-amber-200 shadow-[0_0_16px_-6px_rgba(245,158,11,0.5)]"
                     : "border-white/10 bg-white/[0.03] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200"

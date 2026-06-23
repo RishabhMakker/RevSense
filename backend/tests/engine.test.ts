@@ -84,6 +84,11 @@ describe("core scenario: clicking while turning (CV joint)", () => {
   it("returns a usable mechanic script mentioning the vehicle", () => {
     expect(result.mechanicScript).toContain("2014 Honda Civic");
     expect(result.mechanicScript.toLowerCase()).toContain("cv joint");
+    // Reads like a person talking to their mechanic — no engine/AI/triage tells.
+    expect(result.mechanicScript.toLowerCase()).not.toContain("online triage");
+    expect(result.mechanicScript.toLowerCase()).not.toContain("triage");
+    // Names the likely culprits in plain words — no read-aloud percentages (#4).
+    expect(result.mechanicScript).not.toContain("%");
   });
 });
 

@@ -47,6 +47,14 @@ export const VERDICT_STYLES: Record<
   },
 };
 
+/**
+ * Shared text-input style. `min-h-11` keeps a 44px tap target on mobile without
+ * changing desktop density; `text-base sm:text-sm` uses 16px on small screens
+ * so iOS doesn't auto-zoom on focus, then tightens to 14px from `sm` up.
+ */
+export const inputClass =
+  "w-full min-h-11 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-base text-white placeholder:text-zinc-400 outline-none transition-colors focus:border-amber-400/50 focus:bg-white/[0.06] sm:text-sm";
+
 export function confidenceColor(confidence: number): string {
   if (confidence >= 55) return "from-amber-400 to-orange-500";
   if (confidence >= 35) return "from-amber-500/80 to-orange-500/80";

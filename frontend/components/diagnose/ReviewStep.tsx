@@ -78,7 +78,7 @@ export function ReviewStep({
             </>
           ) : (
             <span className="text-zinc-400">
-              No recording — text and context only
+              No recording added — we&apos;ll diagnose from your description.
             </span>
           )}
         </Row>

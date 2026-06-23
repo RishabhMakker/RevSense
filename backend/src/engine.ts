@@ -66,10 +66,10 @@ interface ScoredIssue {
   hasDirectEvidence: boolean;
 }
 
-function listToProse(items: string[]): string {
+function listToProse(items: string[], conjunction = "and"): string {
   if (items.length <= 1) return items[0] ?? "";
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+  if (items.length === 2) return `${items[0]} ${conjunction} ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, ${conjunction} ${items[items.length - 1]}`;
 }
 
 function scoreIssue(
@@ -326,24 +326,33 @@ function buildMechanicScript(
       .map((c) => SOUND_CONTEXT_LABELS[c].toLowerCase())
   );
   const mileagePart = v.mileage
-    ? ` with ${v.mileage.toLocaleString("en-US")} miles`
+    ? ` with about ${v.mileage.toLocaleString("en-US")} miles on it`
     : "";
+  const whenPart = contexts ? ` I mostly notice it during ${contexts}.` : "";
   const audioPart = req.audio?.hints.length
-    ? ` A basic audio analysis flagged: ${listToProse(
+    ? ` I managed to record it too, and the parts that stood out to me were ${listToProse(
         req.audio.hints.map((h) => AUDIO_HINT_LABELS[h].toLowerCase())
       )}.`
     : "";
-  const causePart =
-    causes.length > 0
-      ? ` An online triage suggested checking, in order: ${listToProse(
-          causes.slice(0, 3).map((c) => `${c.title.toLowerCase()} (${c.confidence}%)`)
-        )}.`
-      : "";
+  // Name the likely culprits the way an owner actually would — lead with the
+  // top one, offer the rest as alternatives, and skip the read-aloud numbers
+  // (reciting "40%, 30%" to a mechanic sounds odd). The cards keep the math.
+  let guessPart = "";
+  if (causes.length > 0) {
+    const [first, ...rest] = causes
+      .slice(0, 3)
+      .map((c) => c.title.toLowerCase());
+    const alternatives =
+      rest.length > 0 ? `, or maybe ${listToProse(rest, "or")}` : "";
+    guessPart = ` I did a little reading and my best guess is something like ${first}${alternatives} — though honestly I'm not sure, so I'd really value your take.`;
+  }
   const askPart =
     causes.length > 0
-      ? ` Could you start with the ${ISSUE_CATEGORY_LABELS[causes[0]!.category].toLowerCase()} area?`
+      ? ` Could we start by taking a look at the ${ISSUE_CATEGORY_LABELS[
+          causes[0]!.category
+        ].toLowerCase()}?`
       : "";
-  return `I'm hearing ${soundWords} from my ${v.year} ${v.make} ${v.model}${mileagePart}.${contexts ? ` It happens during ${contexts}.` : ""}${audioPart}${causePart}${askPart}`;
+  return `Hi — I could really use your help with my ${v.year} ${v.make} ${v.model}${mileagePart}. It's started making ${soundWords} lately.${whenPart}${audioPart}${guessPart}${askPart} Thanks so much!`;
 }
 
 /* ------------------------------------------------------------------ */

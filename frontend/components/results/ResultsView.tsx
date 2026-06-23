@@ -88,7 +88,7 @@ export function ResultsView({
           <button
             type="button"
             onClick={onReset}
-            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-white/[0.08] hover:text-white"
+            className="flex min-h-11 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-white/[0.08] hover:text-white"
           >
             <RotateCcw className="h-3.5 w-3.5" /> New diagnosis
           </button>
@@ -110,13 +110,13 @@ export function ResultsView({
             <VerdictIcon className="h-4 w-4" />
             {result.overall.verdict}
           </span>
+          {/* Complementary detail, not a second copy of the verdict. The
+              urgency label used to sit here too, but it just restated the
+              verdict's action — so we keep severity (how serious) and drop it. */}
           <span
             className={`rounded-full border px-3 py-1.5 text-xs font-medium ${severity.chip}`}
           >
-            Severity: {severity.label}
-          </span>
-          <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-300">
-            {result.overall.urgencyLabel}
+            {severity.label} severity
           </span>
         </div>
         <p className="mt-4 max-w-3xl text-sm leading-relaxed text-zinc-200 sm:text-base">
@@ -163,9 +163,23 @@ export function ResultsView({
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Ranked causes */}
         <div className="space-y-4 lg:col-span-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-            Likely causes, ranked
-          </h2>
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
+              Likely causes, ranked
+            </h2>
+            <div className="flex items-start gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5">
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
+              <p className="text-xs leading-relaxed text-zinc-400">
+                Go by the ranking first —{" "}
+                <span className="font-medium text-amber-300">Most likely</span>{" "}
+                is the best place to start. The{" "}
+                <span className="font-medium text-zinc-300">% match</span> on
+                each cause is just how closely your description fits a known
+                pattern — a lead for your mechanic, not the odds it&apos;s
+                correct.
+              </p>
+            </div>
+          </div>
           {result.causes.map((cause) => (
             <CauseCard
               key={cause.id}
@@ -183,6 +197,11 @@ export function ResultsView({
           </h2>
 
           <SideCard icon={ListChecks} title="What to check first">
+            <p className="mb-3 text-xs leading-relaxed text-zinc-400">
+              Quick checks, in priority order, that you or your mechanic can run
+              to help confirm or narrow down the likely cause — before paying
+              for a full diagnosis.
+            </p>
             <ol className="space-y-2.5">
               {result.whatToCheckFirst.map((check, i) => (
                 <li key={check} className="flex gap-2.5">
@@ -202,7 +221,7 @@ export function ResultsView({
             <button
               type="button"
               onClick={() => void copyScript()}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs font-medium text-zinc-200 transition-colors hover:bg-white/[0.08]"
+              className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs font-medium text-zinc-200 transition-colors hover:bg-white/[0.08]"
             >
               {copied ? (
                 <>

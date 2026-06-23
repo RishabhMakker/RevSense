@@ -5,13 +5,26 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   CheckCircle2,
   ChevronDown,
+  Info,
   ListChecks,
   Search,
   Sparkles,
+  Star,
   Wrench,
 } from "lucide-react";
 import { EXPLAIN_CAUSE_LIMIT, type RankedCause } from "@revsense/backend";
 import { confidenceColor, SEVERITY_STYLES } from "@/lib/ui";
+
+/**
+ * Qualitative framing that leads ahead of the raw "% match". The top cause is
+ * always "Most likely" — the most likely *of several*, which is the honest read
+ * even when its confidence is capped low (see PRODUCT.md: triage, not certainty).
+ */
+function rankLabel(cause: RankedCause): string {
+  if (cause.rank === 1) return "Most likely";
+  if (cause.confidence >= 35) return "Possible";
+  return "Worth checking";
+}
 
 function DetailBlock({
   icon: Icon,
@@ -43,6 +56,7 @@ export function CauseCard({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const severity = SEVERITY_STYLES[cause.severity];
+  const isTop = cause.rank === 1;
 
   return (
     <motion.div
@@ -50,7 +64,11 @@ export function CauseCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: cause.rank * 0.08 }}
-      className="glass overflow-hidden rounded-2xl"
+      className={`glass overflow-hidden rounded-2xl ${
+        isTop
+          ? "ring-1 ring-amber-400/40 shadow-[0_0_40px_-22px_rgba(251,191,36,0.55)]"
+          : ""
+      }`}
     >
       <button
         type="button"
@@ -58,12 +76,20 @@ export function CauseCard({
         className="flex w-full items-center gap-4 p-5 text-left transition-colors hover:bg-white/[0.03]"
         aria-expanded={open}
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/5 font-mono text-sm font-bold text-amber-300">
+        <span
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold ${
+            isTop
+              ? "bg-amber-500/20 text-amber-200 ring-1 ring-amber-400/40"
+              : "bg-white/5 text-zinc-400"
+          }`}
+        >
           {cause.rank}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-white">{cause.title}</h3>
+            <h3 className={`font-semibold text-white ${isTop ? "text-lg" : ""}`}>
+              {cause.title}
+            </h3>
             <span
               className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${severity.chip}`}
             >
@@ -73,7 +99,17 @@ export function CauseCard({
               {cause.categoryLabel}
             </span>
           </div>
-          <div className="mt-2.5 flex items-center gap-3">
+          <div className="mt-3 flex items-center gap-3">
+            {isTop ? (
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-400/60 bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-200">
+                <Star className="h-3 w-3 fill-amber-300 text-amber-300" />
+                {rankLabel(cause)}
+              </span>
+            ) : (
+              <span className="shrink-0 text-xs font-medium text-zinc-400">
+                {rankLabel(cause)}
+              </span>
+            )}
             <div className="h-1.5 max-w-64 flex-1 overflow-hidden rounded-full bg-white/5">
               <motion.div
                 initial={{ width: 0 }}
@@ -82,8 +118,12 @@ export function CauseCard({
                 className={`h-full rounded-full bg-gradient-to-r ${confidenceColor(cause.confidence)}`}
               />
             </div>
-            <span className="shrink-0 font-mono text-xs text-amber-300">
+            <span
+              className="flex shrink-0 items-center gap-1 font-mono text-[11px] text-zinc-400"
+              title="“% match” = how closely your description fits this known pattern — a lead for your mechanic, not the odds it’s correct."
+            >
               {cause.confidence}% match
+              <Info className="h-3 w-3" aria-hidden="true" />
             </span>
           </div>
         </div>

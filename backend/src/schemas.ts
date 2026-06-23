@@ -282,4 +282,4 @@ export interface DiagnosisResult {
 }
 
 export const DISCLAIMER =
-  "RevSense is a triage assistant, not a certified mechanic. It ranks possible causes from your description, context and basic acoustic clues — it cannot inspect your car and cannot guarantee a diagnosis. Treat results as a starting point for a conversation with a qualified technician. If you notice braking or steering problems, smoke, a burning smell, overheating, an oil-pressure warning, or severe knocking, stop driving and have the vehicle inspected.";
+  "RevSense is a triage assistant, not a certified mechanic. It ranks possible causes from what you describe and any recording you add — it cannot inspect your car and cannot guarantee a diagnosis. Treat results as a starting point for a conversation with a qualified technician. If you notice braking or steering problems, smoke, a burning smell, overheating, an oil-pressure warning, or severe knocking, stop driving and have the vehicle inspected.";

@@ -149,9 +149,9 @@ function scoreIssue(
     if (hintHits.length > 0) {
       score += Math.min(hintHits.length * W.audioHint, W.audioHintCap);
       evidence.push(
-        `Acoustic clues from your recording (${listToProse(
+        `What we picked up in your recording (${listToProse(
           hintHits.map((h) => AUDIO_HINT_LABELS[h].toLowerCase())
-        )}) fit this issue's sound profile.`
+        )}) matches this issue.`
       );
     }
   }

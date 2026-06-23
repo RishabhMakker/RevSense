@@ -163,20 +163,18 @@ export function ResultsView({
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Ranked causes */}
         <div className="space-y-4 lg:col-span-2">
-          <div className="space-y-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
+          <div className="space-y-3">
+            <h2 className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xl font-semibold tracking-tight text-white underline decoration-amber-400/70 decoration-2 underline-offset-4 sm:text-2xl">
               Likely causes, ranked
             </h2>
-            <div className="flex items-start gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5">
-              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
-              <p className="text-xs leading-relaxed text-zinc-400">
-                Go by the ranking first —{" "}
-                <span className="font-medium text-amber-300">Most likely</span>{" "}
-                is the best place to start. The{" "}
-                <span className="font-medium text-zinc-300">% match</span> on
-                each cause is just how closely your description fits a known
-                pattern — a lead for your mechanic, not the odds it&apos;s
-                correct.
+            <div className="rounded-xl border border-amber-400/25 bg-amber-500/[0.05] px-4 py-3.5">
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-300">
+                <Info className="h-3.5 w-3.5" aria-hidden="true" /> How to read this
+              </p>
+              <p className="mt-2 text-[13px] leading-relaxed text-zinc-300">
+                Higher % means your symptoms matched that issue more closely, which
+                drives the ranking. Use it to compare causes, not as odds that the part
+                is broken. Your mechanic confirms what&apos;s actually wrong.
               </p>
             </div>
           </div>

@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ENGINE_TYPES, type EngineType } from "@revsense/backend";
 import { Combobox } from "@/components/ui/Combobox";
 import { inputClass } from "@/lib/ui";
 import { MAKES } from "@/lib/vehicles/makes";
 import { getStaticModels } from "@/lib/vehicles/models";
+import {
+  getOpenYears,
+  getStaticYearRange,
+  yearsFromRange,
+} from "@/lib/vehicles/years";
 import type { VehicleFormState } from "./types";
 
 const ENGINE_TYPE_LABELS: Record<EngineType, string> = {
@@ -58,6 +63,7 @@ export function VehicleStep({ vehicle, onChange }: VehicleStepProps) {
   // so a make change falls back to the static list with no extra reset. A
   // failed fetch changes nothing — the field still accepts free text.
   const make = vehicle.make.trim();
+  const model = vehicle.model.trim();
   const staticModels = useMemo(() => getStaticModels(make), [make]);
   const [enriched, setEnriched] = useState<{
     make: string;
@@ -101,6 +107,87 @@ export function VehicleStep({ vehicle, onChange }: VehicleStepProps) {
     };
   }, [make]);
 
+  // Year options follow make + model. A curated range resolves instantly and
+  // authoritatively client-side (newest-first, clamped to the schema's 1960..
+  // currentYear+1). Anything not in the bundle falls back to the full open
+  // range, so the field is never empty and never blocks a legitimate entry.
+  const staticYearRange = useMemo(
+    () => getStaticYearRange(make, model),
+    [make, model],
+  );
+  const baseYears = useMemo(
+    () =>
+      (staticYearRange
+        ? yearsFromRange(staticYearRange.start, staticYearRange.end)
+        : getOpenYears()
+      ).map(String),
+    [staticYearRange],
+  );
+
+  // Long tail only: mirror /api/models and let the server refine the list.
+  // Curated pairings already have the authoritative answer, so they skip the
+  // network entirely. /api/years returns the open range today; this is the seam
+  // for a future year dataset and is fully optional — any failure keeps the
+  // instant client list, and it never narrows a curated range.
+  const [enrichedYears, setEnrichedYears] = useState<{
+    key: string;
+    years: string[];
+  } | null>(null);
+  const yearKey = `${make}|${model}`;
+  const yearOptions =
+    enrichedYears && enrichedYears.key === yearKey && enrichedYears.years.length
+      ? enrichedYears.years
+      : baseYears;
+
+  useEffect(() => {
+    if (staticYearRange || make.length < 2 || model.length < 1) return;
+    let active = true;
+    const controller = new AbortController();
+    const debounce = setTimeout(() => {
+      fetch(
+        `/api/years?make=${encodeURIComponent(make)}&model=${encodeURIComponent(
+          model,
+        )}`,
+        { signal: controller.signal },
+      )
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { years?: number[] } | null) => {
+          if (active && data?.years?.length) {
+            setEnrichedYears({
+              key: `${make}|${model}`,
+              years: data.years.map(String),
+            });
+          }
+        })
+        .catch(() => {
+          /* keep the instant client list; the field works regardless */
+        });
+    }, 300);
+    return () => {
+      active = false;
+      controller.abort();
+      clearTimeout(debounce);
+    };
+  }, [make, model, staticYearRange]);
+
+  // Clear the year ONLY when a new make/model genuinely can't have it — i.e. we
+  // hold a precise curated range and the entered year falls outside it. Unknown
+  // pairings (open-range fallback) never trigger a wipe, and a still-valid year
+  // is always kept (e.g. switching Civic → Accord with a shared year).
+  const prevMakeModel = useRef(yearKey);
+  useEffect(() => {
+    const key = `${make}|${model}`;
+    if (key === prevMakeModel.current) return;
+    prevMakeModel.current = key;
+    if (!vehicle.year) return;
+    const range = getStaticYearRange(make, model);
+    if (!range) return;
+    const y = Number(vehicle.year);
+    if (Number.isInteger(y) && (y < range.start || y > range.end)) {
+      onChange({ ...vehicle, year: "" });
+    }
+  }, [make, model, vehicle, onChange]);
+
   return (
     <div className="space-y-5">
       <div>
@@ -133,7 +220,7 @@ export function VehicleStep({ vehicle, onChange }: VehicleStepProps) {
           <Combobox
             id="vehicle-model"
             value={vehicle.model}
-            onChange={(model) => set({ model })}
+            onChange={(value) => set({ model: value })}
             options={modelOptions}
             placeholder="e.g. Civic"
             ariaLabel="Vehicle model"
@@ -142,16 +229,17 @@ export function VehicleStep({ vehicle, onChange }: VehicleStepProps) {
           />
         </Field>
         <Field label="Year" htmlFor="vehicle-year">
-          <input
+          <Combobox
             id="vehicle-year"
-            className={inputClass}
-            type="number"
-            inputMode="numeric"
-            placeholder={`1960 – ${currentYear + 1}`}
-            min={1960}
-            max={currentYear + 1}
             value={vehicle.year}
-            onChange={(e) => set({ year: e.target.value })}
+            onChange={(year) => set({ year })}
+            options={yearOptions}
+            placeholder={`e.g. ${currentYear}`}
+            ariaLabel="Vehicle year"
+            maxLength={4}
+            inputMode="numeric"
+            filterMode="contains"
+            suggestCorrections={false}
           />
         </Field>
         <Field label="Mileage" hint="helps accuracy" htmlFor="vehicle-mileage">

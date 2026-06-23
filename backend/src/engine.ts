@@ -6,10 +6,12 @@ import {
   SOUND_CONTEXT_LABELS,
   URGENCY_LABELS,
   type AudioFeatures,
+  type AudioHint,
   type AudioSummary,
   type DiagnoseRequest,
   type DiagnosisOverall,
   type DiagnosisResult,
+  type IssueCategory,
   type RankedCause,
   type RedFlag,
   type SafeToDrive,
@@ -310,49 +312,145 @@ function buildAudioSummary(audio: AudioFeatures): AudioSummary {
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Mechanic script — first-person, plain-spoken, no internals           */
+/* ------------------------------------------------------------------ */
+
+/** Plain "when it happens" phrasing per context. The turning trio (left /
+ *  right / low-speed) overlaps, so it's collapsed separately in
+ *  `describeTurning` and intentionally omitted from this map. */
+const CONTEXT_MOMENTS: Partial<Record<SoundContext, string>> = {
+  cold_start: "on cold starts",
+  idle: "at idle",
+  acceleration: "when accelerating",
+  braking: "when braking",
+  over_bumps: "over bumps",
+  highway_speed: "at highway speed",
+  low_speed: "at low speed",
+  reversing: "when reversing",
+};
+
+/** One plain, spoken read of a recording — never DSP jargon. Recording-quality
+ *  hints (too quiet / clipped) are intentionally absent: they aren't "what
+ *  stood out" about the noise itself. */
+const AUDIO_PLAIN: Partial<Record<AudioHint, string>> = {
+  rhythmic_ticking: "it has a steady, repeating rhythm",
+  sharp_transients: "it's sharp and sudden",
+  high_pitched: "it's high-pitched",
+  low_rumble: "it's a low rumble",
+  tonal_whine: "it's a steady whine",
+  broadband_hiss: "it sounds like a rush of air",
+};
+
+/** Collapse the overlapping turning contexts into one natural phrase so the
+ *  user never reads a redundant list. e.g. left + right + low-speed →
+ *  "when turning, especially at low speed"; left alone → "when turning left". */
+function describeTurning(
+  contexts: Set<SoundContext>,
+  emphasizeLowSpeed: boolean
+): string | null {
+  const left = contexts.has("turning_left");
+  const right = contexts.has("turning_right");
+  const lowSpeed = contexts.has("low_speed_turning");
+  if (!left && !right && !lowSpeed) return null;
+  // Both directions (or only the low-speed variant) just reads as "turning".
+  const direction =
+    left && right
+      ? "turning"
+      : left
+        ? "turning left"
+        : right
+          ? "turning right"
+          : "turning";
+  if (!lowSpeed) return `when ${direction}`;
+  if (!left && !right) return "when turning at low speed";
+  return emphasizeLowSpeed
+    ? `when ${direction}, especially at low speed`
+    : `when ${direction} at low speed`;
+}
+
+/** Build the de-duplicated "when it happens" clause from the selected contexts. */
+function describeWhen(contexts: SoundContext[]): string {
+  const set = new Set(contexts);
+  const lowSpeedInTurning = set.has("low_speed_turning");
+  const seen = new Set<string>();
+  const phrases: string[] = [];
+  for (const c of contexts) {
+    if (c === "turning_left" || c === "turning_right" || c === "low_speed_turning") {
+      continue;
+    }
+    // Don't say "at low speed" twice when the turning phrase already covers it.
+    if (c === "low_speed" && lowSpeedInTurning) continue;
+    const phrase = CONTEXT_MOMENTS[c];
+    if (phrase && !seen.has(phrase)) {
+      seen.add(phrase);
+      phrases.push(phrase);
+    }
+  }
+  // Append the collapsed turning phrase; only emphasize low speed when it's the
+  // sole moment, so the ", especially…" qualifier doesn't break a longer list.
+  const turning = describeTurning(set, phrases.length === 0);
+  if (turning) phrases.push(turning);
+  return listToProse(phrases);
+}
+
+/** Title in mid-sentence form: lower-case only the first letter so internal
+ *  abbreviations (CV, ABS, …) keep their casing. */
+function midSentenceTitle(title: string): string {
+  return title.charAt(0).toLowerCase() + title.slice(1);
+}
+
+
 function buildMechanicScript(
   req: DiagnoseRequest,
   causes: RankedCause[],
   sounds: SoundMatch[]
 ): string {
   const v = req.vehicle;
-  const soundWords =
-    sounds.length > 0
-      ? `a ${listToProse(sounds.map((s) => s.matchedWord))} sound`
+
+  // The sound(s), de-duped, with a neutral fallback.
+  const soundWords = [...new Set(sounds.map((s) => s.matchedWord))];
+  const soundPhrase =
+    soundWords.length > 0
+      ? `a ${listToProse(soundWords)} sound`
       : "an unusual noise";
-  const contexts = listToProse(
-    req.contexts
-      .filter((c): c is Exclude<SoundContext, "other"> => c !== "other")
-      .map((c) => SOUND_CONTEXT_LABELS[c].toLowerCase())
-  );
-  const mileagePart = v.mileage
-    ? ` with about ${v.mileage.toLocaleString("en-US")} miles on it`
+
+  const when = describeWhen(req.contexts);
+  const whenPart = when ? `, mostly ${when}` : "";
+
+  // Lead with the vehicle. With mileage it gets its own short sentence; without
+  // it we merge so there's no dangling "My 2014 Honda Civic." fragment.
+  const vehicle = `${v.year} ${v.make} ${v.model}`;
+  const opening = v.mileage
+    ? `My ${vehicle} has about ${v.mileage.toLocaleString("en-US")} miles. It's making ${soundPhrase}${whenPart}.`
+    : `My ${vehicle} is making ${soundPhrase}${whenPart}.`;
+
+  // One tight, plain clause about the recording — only if there's something
+  // worth saying, and never the audio internals.
+  const audioHint = req.audio?.hints.map((h) => AUDIO_PLAIN[h]).find(Boolean);
+  const audioPart = req.audio
+    ? audioHint
+      ? ` I recorded it too — ${audioHint}.`
+      : " I have a recording of it as well, if that helps."
     : "";
-  const whenPart = contexts ? ` I mostly notice it during ${contexts}.` : "";
-  const audioPart = req.audio?.hints.length
-    ? ` I managed to record it too, and the parts that stood out to me were ${listToProse(
-        req.audio.hints.map((h) => AUDIO_HINT_LABELS[h].toLowerCase())
-      )}.`
-    : "";
-  // Name the likely culprits the way an owner actually would — lead with the
-  // top one, offer the rest as alternatives, and skip the read-aloud numbers
-  // (reciting "40%, 30%" to a mechanic sounds odd). The cards keep the math.
-  let guessPart = "";
+
+  // Frame as the owner looked into the symptoms themselves — name the top
+  // causes in plain words, never the numbers or a "please check X" ask.
+  let suspicionPart = "";
   if (causes.length > 0) {
     const [first, ...rest] = causes
       .slice(0, 3)
-      .map((c) => c.title.toLowerCase());
-    const alternatives =
-      rest.length > 0 ? `, or maybe ${listToProse(rest, "or")}` : "";
-    guessPart = ` I did a little reading and my best guess is something like ${first}${alternatives} — though honestly I'm not sure, so I'd really value your take.`;
+      .map((c) => midSentenceTitle(c.title));
+    if (rest.length === 0) {
+      suspicionPart = ` I looked into the symptoms and think it might be ${first}.`;
+    } else {
+      const alternatives =
+        rest.length === 1 ? rest[0]! : `${rest[0]!}, or ${rest[1]!}`;
+      suspicionPart = ` I looked into the symptoms and think it might be ${first} — or possibly ${alternatives}.`;
+    }
   }
-  const askPart =
-    causes.length > 0
-      ? ` Could we start by taking a look at the ${ISSUE_CATEGORY_LABELS[
-          causes[0]!.category
-        ].toLowerCase()}?`
-      : "";
-  return `Hi — I could really use your help with my ${v.year} ${v.make} ${v.model}${mileagePart}. It's started making ${soundWords} lately.${whenPart}${audioPart}${guessPart}${askPart} Thanks so much!`;
+
+  return `${opening}${audioPart}${suspicionPart}`;
 }
 
 /* ------------------------------------------------------------------ */

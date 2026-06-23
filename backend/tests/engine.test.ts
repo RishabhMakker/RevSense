@@ -81,14 +81,87 @@ describe("core scenario: clicking while turning (CV joint)", () => {
     expect(top.whyLikely.join(" ").toLowerCase()).toMatch(/turning/);
   });
 
-  it("returns a usable mechanic script mentioning the vehicle", () => {
-    expect(result.mechanicScript).toContain("2014 Honda Civic");
-    expect(result.mechanicScript.toLowerCase()).toContain("cv joint");
-    // Reads like a person talking to their mechanic — no engine/AI/triage tells.
-    expect(result.mechanicScript.toLowerCase()).not.toContain("online triage");
-    expect(result.mechanicScript.toLowerCase()).not.toContain("triage");
-    // Names the likely culprits in plain words — no read-aloud percentages (#4).
-    expect(result.mechanicScript).not.toContain("%");
+  it("returns a tight, first-person mechanic script with the vehicle and a plain suspicion", () => {
+    const script = result.mechanicScript;
+    // First-person, leads with the vehicle and its mileage (data-driven).
+    expect(script).toContain("My 2014 Honda Civic");
+    expect(script).toContain("about 128,000 miles");
+    // Names the top culprit by name, framed as an honest suspicion.
+    expect(script.toLowerCase()).toContain("cv joint");
+    expect(script).toContain("I looked into the symptoms and think it might be");
+    // Overlapping turning contexts collapse into one natural phrase.
+    expect(script).toContain("turning right, especially at low speed");
+    // No "please check X" ask — the user shares their own research.
+    expect(script.toLowerCase()).not.toContain("could you start by checking");
+
+    // Ban-list guards stay: no engine/AI/triage tells, no read-aloud numbers (#4).
+    expect(script.toLowerCase()).not.toContain("online triage");
+    expect(script.toLowerCase()).not.toContain("triage");
+    expect(script).not.toContain("%");
+    // The old AI-y filler / misleading "research" framing is gone.
+    const lower = script.toLowerCase();
+    for (const banned of [
+      "i could really use",
+      "did a little reading",
+      "best guess",
+      "value your take",
+      "thanks so much",
+    ]) {
+      expect(lower).not.toContain(banned);
+    }
+  });
+});
+
+describe("mechanic script", () => {
+  it("de-duplicates overlapping turning contexts into one natural phrase", () => {
+    const script = diagnose(
+      makeRequest({
+        symptomText:
+          "I hear a clicking or popping sound when turning the steering wheel at low speed.",
+        contexts: ["turning_left", "turning_right", "low_speed_turning"],
+      })
+    ).mechanicScript;
+    // Three overlapping picks read as one phrase, not a redundant list.
+    expect(script).toContain("when turning, especially at low speed");
+    expect(script).not.toContain("turning left");
+    expect(script).not.toContain("turning right");
+    expect(script).not.toMatch(/low-speed turning/i);
+  });
+
+  it("merges into a single sentence and omits mileage when none is given", () => {
+    const script = diagnose(
+      makeRequest({
+        vehicle: {
+          make: "Honda",
+          model: "Civic",
+          year: 2014,
+          mileage: null,
+          engineType: "gasoline",
+        },
+        symptomText: "A clicking or popping sound when turning at low speed.",
+        contexts: ["low_speed_turning"],
+      })
+    ).mechanicScript;
+    expect(script).toContain("My 2014 Honda Civic is making");
+    expect(script).not.toContain("miles");
+    expect(script).toContain("when turning at low speed");
+  });
+
+  it("adds one plain recording clause with no audio internals", () => {
+    const script = diagnose(DEMO_REQUEST).mechanicScript;
+    expect(script).toContain("I recorded it too");
+    // Plain-language read of the standout — never DSP/feature jargon.
+    expect(script.toLowerCase()).not.toMatch(
+      /transient|spectral|centroid|broadband|flatness|\bhz\b|fft/
+    );
+    expect(script).not.toContain("%");
+    expect(script.toLowerCase()).not.toContain("triage");
+  });
+
+  it("omits the recording clause (and any numbers) when there is no audio", () => {
+    const script = diagnose({ ...DEMO_REQUEST, audio: null }).mechanicScript;
+    expect(script).not.toContain("I recorded it");
+    expect(script).not.toContain("%");
   });
 });
 

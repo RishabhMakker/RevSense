@@ -35,6 +35,14 @@ export interface ComboboxProps {
   loading?: boolean;
   /** Offer a "Did you mean X?" nudge on a near-miss. Suggestive, never forced. */
   suggestCorrections?: boolean;
+  /**
+   * "fuzzy" (default) uses fuse.js — right for free-text names like makes/models.
+   * "contains" is plain substring matching — right for exact tokens like years,
+   * where fuzzy matches would be noisy and a "did you mean" makes no sense.
+   */
+  filterMode?: "fuzzy" | "contains";
+  /** Virtual-keyboard hint, e.g. "numeric" for the Year picker on mobile. */
+  inputMode?: React.ComponentProps<"input">["inputMode"];
 }
 
 /**
@@ -53,6 +61,8 @@ export function Combobox({
   maxLength,
   loading = false,
   suggestCorrections = true,
+  filterMode = "fuzzy",
+  inputMode,
 }: ComboboxProps) {
   const reactId = useId();
   const inputId = id ?? `combobox-${reactId}`;
@@ -78,15 +88,19 @@ export function Combobox({
   const query = value.trim();
   const filtered = useMemo(() => {
     if (!query) return [...options];
+    const lower = query.toLowerCase();
+    if (filterMode === "contains") {
+      return options.filter((o) => o.toLowerCase().includes(lower));
+    }
     const hits = fuse.search(query).map((r) => r.item);
     if (hits.length > 0) return hits;
     // Fall back to substring so an exotic free-text value still self-matches.
-    const lower = query.toLowerCase();
     return options.filter((o) => o.toLowerCase().includes(lower));
-  }, [query, options, fuse]);
+  }, [query, options, fuse, filterMode]);
 
   const suggestion = useMemo(() => {
-    if (!suggestCorrections || query.length < 2) return null;
+    if (filterMode === "contains" || !suggestCorrections || query.length < 2)
+      return null;
     if (options.some((o) => o.toLowerCase() === query.toLowerCase())) return null;
     let best: string | null = null;
     let bestDist = Infinity;
@@ -100,7 +114,7 @@ export function Combobox({
     // Tighter tolerance for short words; looser for long ones.
     const tolerance = query.length <= 4 ? 1 : query.length <= 7 ? 2 : 3;
     return best && bestDist > 0 && bestDist <= tolerance ? best : null;
-  }, [query, options, suggestCorrections]);
+  }, [query, options, suggestCorrections, filterMode]);
 
   // Close when focus/click leaves the component.
   useEffect(() => {
@@ -181,6 +195,7 @@ export function Combobox({
           aria-activedescendant={activeOptionId}
           aria-label={ariaLabel}
           autoComplete="off"
+          inputMode={inputMode}
           placeholder={placeholder}
           value={value}
           maxLength={maxLength}

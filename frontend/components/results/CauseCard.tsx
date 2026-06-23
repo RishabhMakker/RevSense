@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   ChevronDown,
   Info,
-  ListChecks,
   Search,
   Sparkles,
   Star,
@@ -16,14 +15,50 @@ import { EXPLAIN_CAUSE_LIMIT, type RankedCause } from "@revsense/backend";
 import { confidenceColor, SEVERITY_STYLES } from "@/lib/ui";
 
 /**
- * Qualitative framing that leads ahead of the raw "% match". The top cause is
- * always "Most likely" — the most likely *of several*, which is the honest read
- * even when its confidence is capped low (see PRODUCT.md: triage, not certainty).
+ * Tiers turn the deliberately-capped "% match" into plain, progressive language.
+ * Only rank 1 is "Most likely" — every other cause steps down by confidence band.
  */
-function rankLabel(cause: RankedCause): string {
-  if (cause.rank === 1) return "Most likely";
-  if (cause.confidence >= 35) return "Possible";
-  return "Worth checking";
+type TierKey = "most_likely" | "likely" | "possible" | "less_likely";
+
+const TIER_STYLES: Record<
+  TierKey,
+  { label: string; card: string; pill: string; title: string; star: boolean }
+> = {
+  most_likely: {
+    label: "Most likely",
+    card: "ring-1 ring-amber-400/40 shadow-[0_0_40px_-22px_rgba(251,191,36,0.55)]",
+    pill: "border border-amber-400/60 bg-amber-500/15 text-amber-200",
+    title: "text-lg text-white",
+    star: true,
+  },
+  likely: {
+    label: "Likely",
+    card: "ring-1 ring-amber-400/20",
+    pill: "border border-amber-400/30 bg-amber-500/10 text-amber-300",
+    title: "text-base text-white",
+    star: false,
+  },
+  possible: {
+    label: "Possible",
+    card: "ring-1 ring-white/5",
+    pill: "border border-white/15 bg-white/[0.06] text-zinc-300",
+    title: "text-base text-white",
+    star: false,
+  },
+  less_likely: {
+    label: "Less likely",
+    card: "",
+    pill: "border border-white/10 bg-white/[0.02] text-zinc-400",
+    title: "text-base text-zinc-100",
+    star: false,
+  },
+};
+
+function tierFor(cause: RankedCause): TierKey {
+  if (cause.rank === 1) return "most_likely";
+  if (cause.confidence >= 45) return "likely";
+  if (cause.confidence >= 30) return "possible";
+  return "less_likely";
 }
 
 function DetailBlock({
@@ -56,7 +91,7 @@ export function CauseCard({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const severity = SEVERITY_STYLES[cause.severity];
-  const isTop = cause.rank === 1;
+  const tier = TIER_STYLES[tierFor(cause)];
 
   return (
     <motion.div
@@ -64,11 +99,7 @@ export function CauseCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: cause.rank * 0.08 }}
-      className={`glass overflow-hidden rounded-2xl ${
-        isTop
-          ? "ring-1 ring-amber-400/40 shadow-[0_0_40px_-22px_rgba(251,191,36,0.55)]"
-          : ""
-      }`}
+      className={`glass overflow-hidden rounded-2xl ${tier.card}`}
     >
       <button
         type="button"
@@ -78,7 +109,7 @@ export function CauseCard({
       >
         <span
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold ${
-            isTop
+            cause.rank === 1
               ? "bg-amber-500/20 text-amber-200 ring-1 ring-amber-400/40"
               : "bg-white/5 text-zinc-400"
           }`}
@@ -87,9 +118,18 @@ export function CauseCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className={`font-semibold text-white ${isTop ? "text-lg" : ""}`}>
-              {cause.title}
-            </h3>
+            <span
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${tier.pill}`}
+            >
+              {tier.star && (
+                <Star
+                  className="h-3 w-3 fill-amber-300 text-amber-300"
+                  aria-hidden="true"
+                />
+              )}
+              {tier.label}
+            </span>
+            <h3 className={`font-semibold ${tier.title}`}>{cause.title}</h3>
             <span
               className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${severity.chip}`}
             >
@@ -100,27 +140,21 @@ export function CauseCard({
             </span>
           </div>
           <div className="mt-3 flex items-center gap-3">
-            {isTop ? (
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-400/60 bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-200">
-                <Star className="h-3 w-3 fill-amber-300 text-amber-300" />
-                {rankLabel(cause)}
-              </span>
-            ) : (
-              <span className="shrink-0 text-xs font-medium text-zinc-400">
-                {rankLabel(cause)}
-              </span>
-            )}
             <div className="h-1.5 max-w-64 flex-1 overflow-hidden rounded-full bg-white/5">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${cause.confidence}%` }}
-                transition={{ duration: 0.9, delay: 0.2 + cause.rank * 0.08, ease: "easeOut" }}
+                transition={{
+                  duration: 0.9,
+                  delay: 0.2 + cause.rank * 0.08,
+                  ease: "easeOut",
+                }}
                 className={`h-full rounded-full bg-gradient-to-r ${confidenceColor(cause.confidence)}`}
               />
             </div>
             <span
               className="flex shrink-0 items-center gap-1 font-mono text-[11px] text-zinc-400"
-              title="“% match” = how closely your description fits this known pattern — a lead for your mechanic, not the odds it’s correct."
+              title="Higher % = your symptoms matched this issue more closely. It's not how likely that part is broken."
             >
               {cause.confidence}% match
               <Info className="h-3 w-3" aria-hidden="true" />
@@ -184,17 +218,6 @@ export function CauseCard({
                     <li key={item} className="flex gap-2">
                       <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-zinc-500" />
                       {item}
-                    </li>
-                  ))}
-                </ul>
-              </DetailBlock>
-
-              <DetailBlock icon={ListChecks} title="Check first">
-                <ul className="space-y-1.5">
-                  {cause.checksFirst.map((check) => (
-                    <li key={check} className="flex gap-2">
-                      <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
-                      {check}
                     </li>
                   ))}
                 </ul>

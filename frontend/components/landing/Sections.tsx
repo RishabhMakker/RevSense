@@ -9,6 +9,7 @@ import {
   Stethoscope,
   Wrench,
 } from "lucide-react";
+import { SampleVerdictCard } from "./SampleVerdictCard";
 
 function SectionHeading({
   eyebrow,
@@ -144,11 +145,11 @@ export function Features() {
 
 export function DemoCallout() {
   return (
-    <section className="px-6 py-12">
+    <section id="demo" className="px-6 py-12">
       <div className="glass-strong relative mx-auto max-w-5xl overflow-hidden rounded-3xl p-8 sm:p-12">
         <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl" />
-        <div className="relative flex flex-col items-start gap-8 sm:flex-row sm:items-center sm:justify-between">
-          <div className="max-w-xl">
+        <div className="relative grid items-center gap-8 lg:grid-cols-2">
+          <div>
             <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-400">
               <Gauge className="h-4 w-4" /> Try it in 10 seconds
             </p>
@@ -158,15 +159,16 @@ export function DemoCallout() {
             <p className="mt-3 text-sm leading-relaxed text-zinc-400 sm:text-base">
               Load the classic CV-joint scenario — a 2014 Honda Civic with 128k
               miles — and watch RevSense rank the causes, show its reasoning,
-              and draft the mechanic script.
+              and draft the mechanic script. Here&apos;s the result it returns:
             </p>
+            <Link
+              href="/diagnose?demo=1"
+              className="mt-6 inline-flex rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 font-semibold text-ink-950 shadow-[0_0_30px_-8px_rgba(245,158,11,0.8)] transition-all hover:brightness-110"
+            >
+              Load demo scenario
+            </Link>
           </div>
-          <Link
-            href="/diagnose?demo=1"
-            className="shrink-0 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 font-semibold text-ink-950 shadow-[0_0_30px_-8px_rgba(245,158,11,0.8)] transition-all hover:brightness-110"
-          >
-            Load demo scenario
-          </Link>
+          <SampleVerdictCard />
         </div>
       </div>
     </section>

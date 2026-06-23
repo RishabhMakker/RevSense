@@ -29,14 +29,14 @@ function Field({
   return (
     <label className="block">
       <span className="text-sm font-medium text-zinc-200">{label}</span>
-      {hint && <span className="ml-2 text-xs text-zinc-500">{hint}</span>}
+      {hint && <span className="ml-2 text-xs text-zinc-400">{hint}</span>}
       <div className="mt-1.5">{children}</div>
     </label>
   );
 }
 
 const inputClass =
-  "w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-amber-400/50 focus:bg-white/[0.06]";
+  "w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-white placeholder:text-zinc-400 outline-none transition-colors focus:border-amber-400/50 focus:bg-white/[0.06]";
 
 interface VehicleStepProps {
   vehicle: VehicleFormState;
@@ -54,7 +54,7 @@ export function VehicleStep({ vehicle, onChange }: VehicleStepProps) {
         <h2 className="text-xl font-semibold text-white">About your vehicle</h2>
         <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
           Age and mileage matter: a 12-year-old car with 130k miles wears
-          differently than a 3-year-old one, and the engine weighs that in.
+          differently than a 3-year-old one, and that changes what&apos;s likely.
         </p>
       </div>
 

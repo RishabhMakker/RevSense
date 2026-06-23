@@ -1,11 +1,8 @@
 import Link from "next/link";
-import { KNOWN_ISSUE_COUNT } from "@revsense/backend";
 import {
   AlertTriangle,
   AudioWaveform,
-  BrainCircuit,
   ClipboardList,
-  Cpu,
   Gauge,
   Lock,
   Mic,
@@ -42,29 +39,29 @@ function SectionHeading({
 export function HowItWorks() {
   const steps = [
     {
-      icon: Mic,
+      icon: ClipboardList,
       step: "01",
-      title: "Capture the sound",
-      body: "Record the noise right from your browser (or upload a clip). RevSense extracts acoustic clues — pitch, rhythm, sharpness — on your device. The audio itself never leaves your phone.",
+      title: "Describe the problem",
+      body: "Tell us about your car and what it's doing, in plain language — \"clicking when I turn at low speed\" — and tag when it happens.",
     },
     {
-      icon: ClipboardList,
+      icon: Mic,
       step: "02",
-      title: "Describe the symptom",
-      body: "Tell us about your car and the noise in plain language — \"clicking when I turn left at low speed\" — then tag exactly when it happens.",
+      title: "Add a recording (optional)",
+      body: "Got the noise on your phone? Add a clip and RevSense factors it in. No clip? It works from your description alone. We don't save your recording.",
     },
     {
       icon: Stethoscope,
       step: "03",
-      title: "Get a ranked triage",
-      body: `A diagnostic engine scores ${KNOWN_ISSUE_COUNT} known failure patterns against your report and returns likely causes, what to check first, safety guidance, and a script for your mechanic.`,
+      title: "Get a ranked diagnosis",
+      body: "RevSense ranks the likely causes, tells you what to check first, whether it's safe to drive, and exactly what to say at the shop.",
     },
   ];
   return (
     <section id="how-it-works" className="px-6 py-24">
       <SectionHeading
         eyebrow="How it works"
-        title="From mystery noise to action plan in a minute"
+        title="From mystery problem to a clear plan in a minute"
       />
       <div className="mx-auto mt-14 grid max-w-5xl gap-5 sm:grid-cols-3">
         {steps.map(({ icon: Icon, step, title, body }) => (
@@ -90,42 +87,42 @@ export function HowItWorks() {
 export function Features() {
   const features = [
     {
-      icon: AudioWaveform,
-      title: "Real audio analysis",
-      body: "FFT-based feature extraction in your browser: spectral centroid, crest factor, pulse rate, band energy. Honest acoustic clues — not a pretend ML model.",
-    },
-    {
-      icon: Cpu,
-      title: "Transparent rule engine",
-      body: `${KNOWN_ISSUE_COUNT} curated failure patterns with weighted scoring across sounds, phrases, driving context, vehicle age, and mileage. Every ranking comes with its evidence.`,
-    },
-    {
-      icon: BrainCircuit,
-      title: "Optional AI explanations",
-      body: "Add an Anthropic or OpenAI key and Claude rewrites the result into a deeper, case-specific explanation. No key? The engine works fully offline.",
+      icon: Gauge,
+      title: "Ranked, not guessed",
+      body: "Every likely cause comes with a confidence level and the reasons it fits your car — so you see why, not just what.",
     },
     {
       icon: AlertTriangle,
-      title: "Safety-first red flags",
-      body: "Brake grinding, engine knock, smoke, overheating, wheel wobble — high-risk symptoms trigger explicit stop-driving alerts that AI can never soften.",
+      title: "Safety comes first",
+      body: "Grinding brakes, engine knock, smoke, overheating, a wobbling wheel — RevSense calls these out clearly and tells you when to stop driving.",
     },
     {
       icon: Wrench,
-      title: "Mechanic-ready output",
-      body: "A word-for-word script of what to tell your shop, what to check first, repair direction, and difficulty — so you walk in informed.",
+      title: "Mechanic-ready",
+      body: "A word-for-word script for the shop, what to check first, the likely repair, and how involved it is — so you walk in informed.",
+    },
+    {
+      icon: AudioWaveform,
+      title: "Works from a recording too",
+      body: "Add a clip of the noise and RevSense factors it into the ranking. Optional, never required.",
+    },
+    {
+      icon: Stethoscope,
+      title: "Clear, not clinical",
+      body: "Built for people who aren't mechanics. Plain language, honest confidence, no scary jargon.",
     },
     {
       icon: Lock,
-      title: "Nothing stored",
-      body: "No accounts, no database, no uploads. Audio is analyzed on-device; only a handful of numeric features are sent with your form, then discarded.",
+      title: "Private by default",
+      body: "We don't save your recordings or results.",
     },
   ];
   return (
     <section id="features" className="px-6 py-24">
       <SectionHeading
         eyebrow="Features"
-        title="A serious triage tool, not a magic 8-ball"
-        subtitle="RevSense is built to be useful and honest: ranked possibilities with evidence and confidence — never fake certainty."
+        title="A real diagnosis, not a guess"
+        subtitle="Ranked possibilities with the reasons behind them — and honest confidence, never fake certainty."
       />
       <div className="mx-auto mt-14 grid max-w-5xl gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {features.map(({ icon: Icon, title, body }) => (
@@ -160,8 +157,8 @@ export function DemoCallout() {
             </h3>
             <p className="mt-3 text-sm leading-relaxed text-zinc-400 sm:text-base">
               Load the classic CV-joint scenario — a 2014 Honda Civic with 128k
-              miles — and watch the engine rank causes, surface evidence, and
-              draft the mechanic script.
+              miles — and watch RevSense rank the causes, show its reasoning,
+              and draft the mechanic script.
             </p>
           </div>
           <Link
@@ -191,10 +188,10 @@ export function SafetySection() {
         <div className="mt-5 space-y-4 text-sm leading-relaxed text-zinc-300">
           <p>
             RevSense is a <strong className="text-white">triage assistant</strong>,
-            not a certified mechanic. It ranks possibilities from your
-            description and basic acoustic clues — it cannot inspect your car
-            and cannot guarantee a diagnosis. Treat every result as a starting
-            point for a conversation with a qualified technician.
+            not a certified mechanic. It ranks possibilities from what you
+            describe (and a recording, if you add one) — it cannot inspect your
+            car and cannot guarantee a diagnosis. Treat every result as a
+            starting point for a conversation with a qualified technician.
           </p>
           <p>
             Stop driving and get a professional inspection immediately if you
@@ -218,8 +215,8 @@ export function SafetySection() {
             ))}
           </ul>
           <p className="text-zinc-400">
-            RevSense detects these patterns in your description and will tell
-            you, plainly, when it thinks you should stop driving.
+            RevSense watches for these and will tell you, plainly, when to stop
+            driving.
           </p>
         </div>
       </div>

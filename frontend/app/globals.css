@@ -39,18 +39,24 @@ body {
 
 /* ---------- reusable surfaces ---------- */
 
+/* Matte solid surfaces — the app's default. No backdrop-blur: it reads as a
+   precise instrument panel, not a decorative glass stack, and costs no GPU. */
 .glass {
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: #101018;
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .glass-strong {
-  background: rgba(20, 20, 29, 0.75);
+  background: #14141d;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+}
+
+/* The one deliberate translucent moment: the floating hero preview card, which
+   genuinely sits above the grid + equalizer behind it. Glass used correctly. */
+.glass-float {
+  background: rgba(20, 20, 29, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
 }
 
 .text-gradient {
@@ -137,4 +143,37 @@ body {
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+/* ---------- accessibility ---------- */
+
+/* Visible, branded keyboard-focus ring. Unlayered so it wins over Tailwind's
+   `outline-none` utility on the form inputs. */
+:focus-visible {
+  outline: 2px solid var(--color-accent-400);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Honor the OS "reduce motion" setting: freeze looping decorative animations
+   and collapse transitions to a near-instant crossfade. Framer Motion is
+   handled separately via <MotionConfig reducedMotion="user"> in layout.tsx. */
+@media (prefers-reduced-motion: reduce) {
+  .eq-bar,
+  .pulse-ring::before,
+  .pulse-ring::after,
+  .animate-spin-slow,
+  .shimmer,
+  .scan-sweep {
+    animation: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

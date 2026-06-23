@@ -65,15 +65,14 @@ export function AudioStep({ audio, onAudioChange }: AudioStepProps) {
     <div className="space-y-5">
       <div>
         <h2 className="text-xl font-semibold text-white">
-          Capture the sound{" "}
-          <span className="ml-1 text-sm font-normal text-zinc-500">
+          Add a recording{" "}
+          <span className="ml-1 text-sm font-normal text-zinc-400">
             optional, improves accuracy
           </span>
         </h2>
         <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
           Hold your phone near the noise with the engine running (parked,
-          parking brake on). Audio is analyzed on your device — only a few
-          numeric features are submitted.
+          parking brake on). We don&apos;t save your recording.
         </p>
       </div>
 
@@ -126,8 +125,8 @@ export function AudioStep({ audio, onAudioChange }: AudioStepProps) {
           )}
           {audio.features.hints.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                Basic acoustic clues
+              <p className="text-xs font-medium uppercase tracking-wider text-zinc-400">
+                What we noticed
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {audio.features.hints.map((hint) => (
@@ -160,7 +159,7 @@ export function AudioStep({ audio, onAudioChange }: AudioStepProps) {
             <span className="text-sm font-semibold text-white">
               Record with microphone
             </span>
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-zinc-400">
               up to {MAX_RECORDING_SECONDS} seconds
             </span>
           </button>
@@ -181,7 +180,7 @@ export function AudioStep({ audio, onAudioChange }: AudioStepProps) {
             <span className="text-sm font-semibold text-white">
               {analyzing ? "Analyzing audio…" : "Upload an audio file"}
             </span>
-            <span className="text-xs text-zinc-500">wav · mp3 · m4a · webm</span>
+            <span className="text-xs text-zinc-400">wav · mp3 · m4a · webm</span>
           </button>
           <input
             ref={fileInputRef}
@@ -204,9 +203,9 @@ export function AudioStep({ audio, onAudioChange }: AudioStepProps) {
         </div>
       )}
 
-      <p className="text-xs leading-relaxed text-zinc-500">
-        No recording? No problem — skip this step and describe the sound in
-        words. The engine works either way.
+      <p className="text-xs leading-relaxed text-zinc-400">
+        No recording? No problem — describe the problem in words instead. It
+        works either way.
       </p>
     </div>
   );

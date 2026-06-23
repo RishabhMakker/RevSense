@@ -23,7 +23,7 @@ import { ScanningOverlay } from "./ScanningOverlay";
 import { ResultsView } from "@/components/results/ResultsView";
 import { EMPTY_VEHICLE, type AudioState, type VehicleFormState } from "./types";
 
-const STEPS = ["Sound", "Vehicle", "Symptoms", "Review"] as const;
+const STEPS = ["Recording", "Vehicle", "Symptoms", "Review"] as const;
 const MIN_SCAN_MS = 2800;
 
 /** Synthetic click-train envelope so the demo scenario has a waveform to show. */
@@ -53,7 +53,7 @@ function demoAudio(): AudioState | null {
     features: DEMO_REQUEST.audio,
     envelope: demoEnvelope(),
     objectUrl: null,
-    label: "Demo scenario · simulated 6.4s recording",
+    label: "Demo scenario · sample recording",
   };
 }
 
@@ -176,10 +176,7 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
   if (phase === "scanning") {
     return (
       <div className="flex min-h-[60vh] items-center">
-        <ScanningOverlay
-          aiConfigured={aiStatus.aiConfigured}
-          aiProviderLabel={aiStatus.aiProviderLabel}
-        />
+        <ScanningOverlay aiConfigured={aiStatus.aiConfigured} />
       </div>
     );
   }
@@ -216,7 +213,7 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
               />
               <span
                 className={`text-left text-xs transition-colors ${
-                  i === step ? "font-semibold text-amber-300" : "text-zinc-500"
+                  i === step ? "font-semibold text-amber-300" : "text-zinc-400"
                 }`}
               >
                 {label}
@@ -227,7 +224,7 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
         <button
           type="button"
           onClick={loadDemo}
-          className="ml-3 flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-400 transition-colors hover:border-amber-400/30 hover:text-amber-200"
+          className="ml-3 flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-zinc-400 transition-colors hover:border-amber-400/30 hover:text-amber-200"
           title="Prefill the clicking-while-turning demo scenario"
         >
           <FlaskConical className="h-3.5 w-3.5" /> Demo

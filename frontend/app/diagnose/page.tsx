@@ -5,9 +5,9 @@ import { Navbar } from "@/components/Navbar";
 import { DiagnoseWizard } from "@/components/diagnose/DiagnoseWizard";
 
 export const metadata: Metadata = {
-  title: "Diagnose a sound — RevSense",
+  title: "Diagnose your car — RevSense",
   description:
-    "Record or upload your car's noise, describe the symptom, and get a ranked triage of likely causes.",
+    "Describe what your car is doing, add a recording if you have one, and get a ranked, safety-aware list of likely causes.",
 };
 
 export default async function DiagnosePage({

@@ -88,7 +88,7 @@ export function CauseCard({
           </div>
         </div>
         <ChevronDown
-          className={`h-5 w-5 shrink-0 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`h-5 w-5 shrink-0 text-zinc-400 transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -108,7 +108,7 @@ export function CauseCard({
               {cause.aiNote ? (
                 <div className="rounded-xl border border-amber-400/20 bg-amber-500/[0.06] p-4">
                   <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-300">
-                    <Sparkles className="h-3.5 w-3.5" /> AI explanation
+                    <Sparkles className="h-3.5 w-3.5" /> More detail
                   </p>
                   <p className="mt-2 text-sm leading-relaxed text-zinc-200">
                     {cause.aiNote}
@@ -117,7 +117,7 @@ export function CauseCard({
               ) : explaining && cause.rank <= EXPLAIN_CAUSE_LIMIT ? (
                 <div className="rounded-xl border border-amber-400/20 bg-amber-500/[0.06] p-4">
                   <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-300">
-                    <Sparkles className="h-3.5 w-3.5 animate-pulse" /> AI explanation
+                    <Sparkles className="h-3.5 w-3.5 animate-pulse" /> More detail
                   </p>
                   <div className="mt-3 space-y-2">
                     <div className="h-2.5 w-full animate-pulse rounded bg-white/10" />

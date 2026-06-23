@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { MotionProvider } from "@/components/MotionProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RevSense — Hear what your car is telling you",
+  title: "RevSense — Understand what your car is telling you",
   description:
-    "Record the noise your car is making, describe when it happens, and get a ranked, safety-aware triage of likely causes — powered by a real diagnostic engine with optional AI explanations.",
+    "Describe what your car is doing, add a recording if you have one, and get a ranked, safety-aware list of likely causes — plus what to check and exactly what to tell your mechanic.",
 };
 
 export default function RootLayout({
@@ -29,7 +30,9 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <MotionProvider>{children}</MotionProvider>
+      </body>
     </html>
   );
 }

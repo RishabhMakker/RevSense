@@ -8,9 +8,9 @@ export function Footer() {
         <div className="max-w-sm space-y-3">
           <Logo />
           <p className="text-sm leading-relaxed text-zinc-400">
-            A smart triage assistant for car noises. RevSense combines your
-            description, driving context, and basic acoustic clues with a
-            rule-based diagnostic engine — plus optional AI explanations.
+            A clear, safety-first way to figure out what your car is doing.
+            Describe the problem, add a recording if you have one, and get a
+            ranked diagnosis with a plan.
           </p>
         </div>
         <div className="flex gap-14 text-sm">
@@ -19,7 +19,7 @@ export function Footer() {
             <ul className="space-y-2 text-zinc-400">
               <li>
                 <Link href="/diagnose" className="hover:text-white">
-                  Diagnose a sound
+                  Diagnose your car
                 </Link>
               </li>
               <li>
@@ -43,17 +43,17 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <span className="cursor-default">No data stored</span>
+                <span className="cursor-default">We don&apos;t save your recordings</span>
               </li>
               <li>
-                <span className="cursor-default">Audio stays on device</span>
+                <span className="cursor-default">Private by default</span>
               </li>
             </ul>
           </div>
         </div>
       </div>
       <div className="border-t border-white/5 px-6 py-4">
-        <p className="mx-auto max-w-6xl text-xs leading-relaxed text-zinc-500">
+        <p className="mx-auto max-w-6xl text-xs leading-relaxed text-zinc-400">
           RevSense is not a certified mechanic and cannot guarantee the cause of
           a sound. For braking, steering, smoke, burning smells, overheating, or
           oil-pressure warnings: stop driving and consult a professional.

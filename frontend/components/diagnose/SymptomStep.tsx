@@ -38,12 +38,12 @@ export function SymptomStep({
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-white">
-          Describe what you hear
+          Describe the problem
         </h2>
         <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
-          The sound word matters most — clicking, grinding, squealing, knocking,
-          rattling, whining, humming… Be specific about where it seems to come
-          from and what makes it better or worse.
+          Be specific: what you notice, where it seems to come from, and what
+          makes it better or worse. If there&apos;s a sound, naming it helps —
+          clicking, grinding, squealing, knocking, rattling, whining, humming.
         </p>
       </div>
 
@@ -51,10 +51,11 @@ export function SymptomStep({
         <textarea
           value={symptomText}
           onChange={(e) => onSymptomChange(e.target.value)}
+          aria-label="Describe the car problem in your own words"
           rows={4}
           maxLength={2000}
           placeholder='e.g. "I hear a clicking or popping sound when turning the steering wheel at low speed, like pulling out of a parking spot."'
-          className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm leading-relaxed text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-amber-400/50 focus:bg-white/[0.06]"
+          className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm leading-relaxed text-white placeholder:text-zinc-400 outline-none transition-colors focus:border-amber-400/50 focus:bg-white/[0.06]"
         />
         <div className="mt-1 flex items-center justify-between text-xs text-zinc-600">
           <span>{symptomText.trim().length < 10 ? "At least 10 characters" : " "}</span>
@@ -66,7 +67,7 @@ export function SymptomStep({
               key={example}
               type="button"
               onClick={() => onSymptomChange(example)}
-              className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-400 transition-colors hover:border-amber-400/30 hover:text-amber-200"
+              className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs text-zinc-400 transition-colors hover:border-amber-400/30 hover:text-amber-200"
             >
               {example}
             </button>
@@ -77,7 +78,7 @@ export function SymptomStep({
       <div>
         <p className="text-sm font-medium text-zinc-200">
           When does it happen?{" "}
-          <span className="font-normal text-zinc-500">select all that apply</span>
+          <span className="font-normal text-zinc-400">select all that apply</span>
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {SOUND_CONTEXTS.map((ctx) => {

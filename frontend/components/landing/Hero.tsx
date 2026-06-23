@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Mic, ShieldCheck, Sparkles } from "lucide-react";
-import { KNOWN_ISSUE_COUNT } from "@revsense/backend";
+import { ArrowRight, Mic, ShieldCheck } from "lucide-react";
 
 const EQ_BARS = [
   0.35, 0.6, 0.45, 0.8, 0.55, 1, 0.7, 0.9, 0.5, 0.75, 0.4, 0.65, 0.85, 0.45,
@@ -14,18 +13,18 @@ export function Hero() {
 
       <div className="mx-auto flex max-w-6xl flex-col items-center px-6 text-center">
         <div className="glass mb-7 flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium text-amber-200/90">
-          <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-          {KNOWN_ISSUE_COUNT} failure patterns · 10 vehicle systems
+          <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
+          Ranked causes · Safety-first · Mechanic-ready
         </div>
 
         <h1 className="max-w-3xl text-balance text-4xl font-semibold leading-[1.08] tracking-tight text-white sm:text-6xl">
-          Hear what your car is <span className="text-gradient">telling you</span>
+          Understand what your car is <span className="text-amber-400">telling you</span>
         </h1>
 
         <p className="mt-6 max-w-2xl text-balance text-base leading-relaxed text-zinc-400 sm:text-lg">
-          Record the noise, describe when it happens, and RevSense triages the
-          likely causes — ranked by confidence, flagged for safety, and
-          translated into exactly what to tell your mechanic.
+          Describe what&apos;s going on — and add a recording if you have one.
+          RevSense ranks the likely causes, flags anything unsafe, and tells you
+          exactly what to say at the shop.
         </p>
 
         <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">
@@ -61,7 +60,7 @@ export function Hero() {
         </div>
 
         {/* Floating sample verdict card */}
-        <div className="glass-strong mt-12 w-full max-w-2xl rounded-2xl p-5 text-left shadow-[0_24px_80px_-32px_rgba(0,0,0,0.9)]">
+        <div className="glass-float mt-12 w-full max-w-2xl rounded-2xl p-5 text-left shadow-[0_24px_80px_-32px_rgba(0,0,0,0.9)]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15">

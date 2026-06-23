@@ -4,12 +4,9 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   AlertOctagon,
-  AudioWaveform,
   Check,
   ClipboardCopy,
-  Cpu,
   Info,
-  Languages,
   ListChecks,
   MessageSquareQuote,
   RotateCcw,
@@ -17,28 +14,9 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { SOUND_CONTEXT_LABELS, type DiagnosisResult } from "@revsense/backend";
+import { type DiagnosisResult } from "@revsense/backend";
 import { SEVERITY_STYLES, VERDICT_STYLES } from "@/lib/ui";
 import { CauseCard } from "./CauseCard";
-
-/** Friendlier wording for the engine's canonical sound types (display only). */
-const SOUND_TYPE_LABELS: Record<string, string> = {
-  click: "clicking",
-  pop: "popping",
-  tick: "ticking",
-  knock: "knocking",
-  grind: "grinding",
-  squeal: "squealing",
-  chirp: "chirping",
-  rattle: "rattling",
-  clunk: "clunking",
-  hiss: "hissing",
-  whine: "whining",
-  hum: "humming",
-  rumble: "rumbling",
-  creak: "creaking",
-  vibration: "vibration",
-};
 
 function SideCard({
   icon: Icon,
@@ -94,30 +72,19 @@ export function ResultsView({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-400">
-            Triage report
+            Your diagnosis
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white">
             {result.vehicleLabel}
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-300">
-            {explaining ? (
-              <>
-                <Sparkles className="h-3.5 w-3.5 animate-pulse text-amber-400" />
-                Writing AI explanation…
-              </>
-            ) : result.mode === "ai-enhanced" ? (
-              <>
-                <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-                AI-enhanced{result.aiProviderLabel ? ` · ${result.aiProviderLabel}` : ""}
-              </>
-            ) : (
-              <>
-                <Cpu className="h-3.5 w-3.5 text-amber-400" /> Rule engine
-              </>
-            )}
-          </span>
+          {explaining && (
+            <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-300">
+              <Sparkles className="h-3.5 w-3.5 animate-pulse text-amber-400" />
+              Adding detail…
+            </span>
+          )}
           <button
             type="button"
             onClick={onReset}
@@ -132,6 +99,8 @@ export function ResultsView({
       <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
+        role={result.overall.safeToDrive === "no" ? "alert" : "status"}
+        aria-live={result.overall.safeToDrive === "no" ? "assertive" : "polite"}
         className={`glass-strong rounded-2xl border p-6 ${verdict.border} ${verdict.glow}`}
       >
         <div className="flex flex-wrap items-center gap-3">
@@ -166,10 +135,11 @@ export function ResultsView({
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
+          role="alert"
           className="space-y-3 rounded-2xl border border-red-400/25 bg-red-500/[0.07] p-5"
         >
           <p className="flex items-center gap-2 text-sm font-semibold text-red-200">
-            <AlertOctagon className="h-4.5 w-4.5" /> Safety alerts from your description
+            <AlertOctagon className="h-4.5 w-4.5" /> Safety alerts
           </p>
           {result.redFlags.map((flag) => (
             <div key={flag.id} className="rounded-xl bg-red-500/[0.08] p-3.5">
@@ -179,49 +149,6 @@ export function ResultsView({
               </p>
             </div>
           ))}
-        </motion.div>
-      )}
-
-      {/* How the AI read the description (interpreter contribution) */}
-      {result.interpretation && (
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.05] p-5"
-        >
-          <p className="flex items-center gap-2 text-sm font-semibold text-amber-100">
-            <Languages className="h-4 w-4 text-amber-400" /> How we read your
-            description
-          </p>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-300">
-            {result.interpretation.rationale}
-          </p>
-          {(result.interpretation.soundTypes.length > 0 ||
-            result.interpretation.contexts.length > 0) && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {result.interpretation.soundTypes.map((s) => (
-                <span
-                  key={`s-${s}`}
-                  className="rounded-full border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-200"
-                >
-                  heard as {SOUND_TYPE_LABELS[s] ?? s}
-                </span>
-              ))}
-              {result.interpretation.contexts.map((c) => (
-                <span
-                  key={`c-${c}`}
-                  className="rounded-full border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-200"
-                >
-                  {SOUND_CONTEXT_LABELS[c]}
-                </span>
-              ))}
-            </div>
-          )}
-          <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">
-            AI mapped your wording to these signals so the ranking below
-            wouldn&apos;t miss them. The engine still did all the scoring.
-          </p>
         </motion.div>
       )}
 
@@ -288,34 +215,12 @@ export function ResultsView({
               )}
             </button>
           </SideCard>
-
-          {result.audioSummary && (
-            <SideCard icon={AudioWaveform} title="Acoustic clues">
-              {result.audioSummary.hintLabels.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-1.5">
-                  {result.audioSummary.hintLabels.map((label) => (
-                    <span
-                      key={label}
-                      className="rounded-full border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-200"
-                    >
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <ul className="space-y-1.5 text-xs text-zinc-400">
-                {result.audioSummary.notes.map((note) => (
-                  <li key={note}>{note}</li>
-                ))}
-              </ul>
-            </SideCard>
-          )}
         </div>
       </div>
 
       {/* Disclaimer */}
       <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
-        <p className="text-xs leading-relaxed text-zinc-500">
+        <p className="text-xs leading-relaxed text-zinc-400">
           {result.disclaimer}
         </p>
       </div>

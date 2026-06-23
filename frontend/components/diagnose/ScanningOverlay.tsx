@@ -3,25 +3,20 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Gauge } from "lucide-react";
-import { KNOWN_ISSUE_COUNT } from "@revsense/backend";
 
 interface ScanningOverlayProps {
   aiConfigured: boolean;
-  aiProviderLabel: string | null;
 }
 
-export function ScanningOverlay({
-  aiConfigured,
-  aiProviderLabel,
-}: ScanningOverlayProps) {
+export function ScanningOverlay({ aiConfigured }: ScanningOverlayProps) {
   const stages = [
-    "Extracting acoustic features…",
-    `Matching against ${KNOWN_ISSUE_COUNT} known failure patterns…`,
-    "Weighing vehicle age and mileage…",
-    "Scanning for safety red flags…",
-    ...(aiConfigured
-      ? [`Asking ${aiProviderLabel ?? "AI"} for a clearer explanation…`]
-      : ["Compiling triage report…"]),
+    "Reading your report…",
+    "Matching likely causes…",
+    "Weighing your car's age and mileage…",
+    "Checking for safety red flags…",
+    aiConfigured
+      ? "Writing a clearer explanation…"
+      : "Putting your report together…",
   ];
   const [stageIndex, setStageIndex] = useState(0);
 
@@ -54,7 +49,7 @@ export function ScanningOverlay({
         <div className="scan-sweep absolute inset-y-0 w-1/3 rounded-full bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
       </div>
 
-      <div className="mt-5 h-6">
+      <div className="mt-5 h-6" role="status" aria-live="polite">
         <motion.p
           key={stageIndex}
           initial={{ opacity: 0, y: 6 }}

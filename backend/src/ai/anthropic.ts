@@ -14,7 +14,8 @@ export async function enhanceWithAnthropic(
   apiKey: string,
   req: DiagnoseRequest,
   result: DiagnosisResult,
-  model?: string
+  model?: string,
+  ownerContext?: string | null
 ): Promise<AIEnhancement> {
   const client = new Anthropic({
     apiKey,
@@ -37,7 +38,9 @@ export async function enhanceWithAnthropic(
       },
     },
     system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: buildUserPrompt(req, result) }],
+    messages: [
+      { role: "user", content: buildUserPrompt(req, result, ownerContext) },
+    ],
   });
 
   const text = response.content.find((b) => b.type === "text")?.text;

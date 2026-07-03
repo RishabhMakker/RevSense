@@ -170,18 +170,45 @@ function mergeEnhancement(
  */
 export async function enhanceWithAI(
   req: DiagnoseRequest,
-  result: DiagnosisResult
+  result: DiagnosisResult,
+  opts?: {
+    /**
+     * One short sentence of device-local scan history (e.g. "Second report of
+     * a similar noise on this vehicle"), supplied by the client. Prompt-only:
+     * it personalizes the prose and never touches ranking or safety.
+     */
+    ownerContext?: string | null;
+  }
 ): Promise<DiagnosisResult> {
   const provider = resolveProvider();
   if (!provider || result.causes.length === 0) return result;
+  const ownerContext = opts?.ownerContext ?? null;
 
   try {
     const enhancement =
       provider.name === "anthropic"
-        ? await enhanceWithAnthropic(provider.apiKey, req, result, provider.model)
+        ? await enhanceWithAnthropic(
+            provider.apiKey,
+            req,
+            result,
+            provider.model,
+            ownerContext
+          )
         : provider.name === "openrouter"
-          ? await enhanceWithOpenRouter(provider.apiKey, req, result, provider.model)
-          : await enhanceWithOpenAI(provider.apiKey, req, result, provider.model);
+          ? await enhanceWithOpenRouter(
+              provider.apiKey,
+              req,
+              result,
+              provider.model,
+              ownerContext
+            )
+          : await enhanceWithOpenAI(
+              provider.apiKey,
+              req,
+              result,
+              provider.model,
+              ownerContext
+            );
     return mergeEnhancement(result, enhancement, provider.label);
   } catch (err) {
     console.error(

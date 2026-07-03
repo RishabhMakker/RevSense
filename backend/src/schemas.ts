@@ -158,6 +158,26 @@ export type AudioFeatures = z.infer<typeof audioFeaturesSchema>;
 
 const CURRENT_YEAR = new Date().getFullYear();
 
+/**
+ * Vehicle-specific priors derived from external per-model reliability data
+ * (NHTSA complaints/recalls, fetched client-side by /api/vehicle-history).
+ * The engine uses them only as a bounded base-rate boost: they can break ties
+ * between plausible causes, never manufacture a top cause, and never touch
+ * red flags or the safety verdict.
+ */
+export const vehiclePriorsSchema = z.object({
+  /** Relative complaint density per category for this make/model/year, 0..1. */
+  categoryWeights: z.partialRecord(
+    z.enum(ISSUE_CATEGORIES),
+    z.number().min(0).max(1)
+  ),
+  /** Categories with at least one open recall — stronger prior, surfaced to the user. */
+  recallCategories: z.array(z.enum(ISSUE_CATEGORIES)).max(ISSUE_CATEGORIES.length),
+  source: z.literal("nhtsa"),
+  fetchedAt: z.string().max(40),
+});
+export type VehiclePriors = z.infer<typeof vehiclePriorsSchema>;
+
 export const vehicleSchema = z.object({
   make: z.string().trim().min(1).max(40),
   model: z.string().trim().min(1).max(60),
@@ -176,6 +196,7 @@ export const diagnoseRequestSchema = z.object({
     .max(2000),
   contexts: z.array(z.enum(SOUND_CONTEXTS)).min(1).max(12),
   audio: audioFeaturesSchema.nullish(),
+  priors: vehiclePriorsSchema.nullish(),
 });
 export type DiagnoseRequest = z.infer<typeof diagnoseRequestSchema>;
 
@@ -244,6 +265,17 @@ export interface InputQuality {
  * engine's controlled vocabulary before scoring. Shown to the user for
  * transparency; the engine still does all ranking and the safety verdict.
  */
+/**
+ * How vehicle-specific priors (if any were sent) affected this result.
+ * Presentation-level only: the underlying boost is already reflected in the
+ * cause ranking, and red flags / safety verdicts ignore priors entirely.
+ */
+export interface DiagnosisPersonalization {
+  priorsApplied: boolean;
+  /** Plain-language nudge when the vehicle has open recalls in a relevant area. */
+  recallNotice: string | null;
+}
+
 export interface SymptomInterpretation {
   /** Canonical sound types inferred from the text the lexicon didn't catch. */
   soundTypes: string[];
@@ -272,6 +304,8 @@ export interface DiagnosisResult {
    * found nothing beyond the user's own words.
    */
   interpretation: SymptomInterpretation | null;
+  /** Present only when the request carried vehicle priors. */
+  personalization?: DiagnosisPersonalization | null;
   /**
    * Extra safety guidance from the LLM in AI-enhanced mode. The overall
    * verdict (severity / safe-to-drive) is always computed by the rule engine

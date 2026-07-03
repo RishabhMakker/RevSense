@@ -42,7 +42,8 @@ Hard rules:
 - Never tell the user it is safe to drive if the engine's verdict says otherwise. You may add caution; you may not remove it.
 - Be concrete and specific to THIS vehicle and THIS description. No generic filler.
 - Plain language; explain jargon in parentheses the first time it appears.
-- The mechanicScript should read like something the owner can say verbatim at a repair shop: symptoms, conditions, vehicle, and what to check first.`;
+- The mechanicScript should read like something the owner can say verbatim at a repair shop: symptoms, conditions, vehicle, and what to check first.
+- If OWNER HISTORY is provided, weave it in naturally — a recurring noise deserves a firmer nudge toward an inspection. Never invent history that wasn't given.`;
 
 /** JSON schema for the structured response (used directly by the Anthropic provider). */
 export function buildResponseSchema(causeIds: string[]): Record<string, unknown> {
@@ -101,7 +102,8 @@ export function buildResponseSchema(causeIds: string[]): Record<string, unknown>
 
 export function buildUserPrompt(
   req: DiagnoseRequest,
-  result: DiagnosisResult
+  result: DiagnosisResult,
+  ownerContext?: string | null
 ): string {
   const v = req.vehicle;
   const contexts = req.contexts
@@ -141,6 +143,6 @@ ${causes}
 
 ENGINE VERDICT: severity ${result.overall.severity}, urgency "${result.overall.urgencyLabel}", safe to drive: ${result.overall.safeToDrive}.
 ${result.redFlags.length > 0 ? `RED FLAGS DETECTED: ${result.redFlags.map((f) => f.label).join("; ")}` : "No red flags detected."}
-
+${ownerContext ? `\nOWNER HISTORY (from this device's saved scans): ${ownerContext}\n` : ""}
 Rewrite the explanation per your instructions. Respond with JSON only.`;
 }

@@ -46,6 +46,21 @@ const W = {
   negativePhrase: -15,
 } as const;
 
+/**
+ * Vehicle priors (per-model NHTSA complaint/recall density) modulate only the
+ * base-rate prior: effectiveBaseRate = min(1, baseRate + boost). With
+ * baseRateScale = 8 the maximum possible swing is +8 points — enough to break
+ * ties between plausible causes, never enough to manufacture a top cause.
+ */
+const PRIORS = {
+  /** categoryWeight 0..1 → up to this much base-rate boost. */
+  weightScale: 0.35,
+  /** Extra boost when the category has an open recall. */
+  recallBoost: 0.25,
+  /** Weight at which the boost is worth a plain-language evidence bullet. */
+  evidenceThreshold: 0.5,
+} as const;
+
 const SEVERITY_RANK: Record<Severity, number> = {
   low: 0,
   moderate: 1,
@@ -178,8 +193,18 @@ function scoreIssue(
     }
   }
 
-  // 6. Prior commonness
-  score += issue.baseRate * W.baseRateScale;
+  // 6. Prior commonness, nudged by per-model priors when the request has them.
+  //    Priors never gate on hasDirectEvidence — they only shade the prior.
+  const priorWeight = req.priors?.categoryWeights[issue.category] ?? 0;
+  const priorRecall = req.priors?.recallCategories.includes(issue.category) ?? false;
+  const rateBoost =
+    priorWeight * PRIORS.weightScale + (priorRecall ? PRIORS.recallBoost : 0);
+  score += Math.min(1, issue.baseRate + rateBoost) * W.baseRateScale;
+  if (priorRecall || priorWeight >= PRIORS.evidenceThreshold) {
+    evidence.push(
+      "This is a commonly reported trouble area for this vehicle."
+    );
+  }
 
   // 7. Engine-type damping (e.g. knock on a diesel is weak evidence)
   if (issue.dampFor?.includes(engineType)) score *= 0.5;
@@ -282,6 +307,27 @@ function computeOverall(
     verdict,
     summary,
   };
+}
+
+/** Presentation-level summary of how priors touched this result. */
+function buildPersonalization(
+  priors: DiagnoseRequest["priors"]
+): DiagnosisResult["personalization"] {
+  if (!priors) return null;
+  const applied =
+    Object.values(priors.categoryWeights).some((w) => (w ?? 0) > 0) ||
+    priors.recallCategories.length > 0;
+  const recallLabels = [...new Set(priors.recallCategories)].map((c) =>
+    ISSUE_CATEGORY_LABELS[c].toLowerCase()
+  );
+  const recallNotice =
+    recallLabels.length > 0
+      ? `This vehicle has at least one open recall involving the ${listToProse(
+          recallLabels,
+          "and"
+        )}. A dealer can check your VIN and complete recall repairs for free.`
+      : null;
+  return { priorsApplied: applied, recallNotice };
 }
 
 function buildAudioSummary(audio: AudioFeatures): AudioSummary {
@@ -558,6 +604,7 @@ export function diagnose(
       note,
     },
     interpretation,
+    personalization: buildPersonalization(req.priors),
     disclaimer: DISCLAIMER,
   };
 }

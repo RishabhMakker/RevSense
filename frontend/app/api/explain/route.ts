@@ -28,10 +28,20 @@ export async function POST(request: Request) {
     );
   }
 
-  const { request: reqData, result } = (body ?? {}) as {
+  const {
+    request: reqData,
+    result,
+    ownerContext: rawOwnerContext,
+  } = (body ?? {}) as {
     request?: unknown;
     result?: DiagnosisResult;
+    ownerContext?: unknown;
   };
+  // Optional device-local history sentence — personalizes the AI prose only.
+  const ownerContext =
+    typeof rawOwnerContext === "string" && rawOwnerContext.trim()
+      ? rawOwnerContext.trim().slice(0, 300)
+      : null;
 
   const parsed = diagnoseRequestSchema.safeParse(reqData);
   if (!parsed.success) {
@@ -47,6 +57,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const enhanced = await enhanceWithAI(parsed.data, result);
+  const enhanced = await enhanceWithAI(parsed.data, result, { ownerContext });
   return NextResponse.json(enhanced);
 }

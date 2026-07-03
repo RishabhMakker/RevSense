@@ -28,7 +28,8 @@ export async function enhanceWithOpenRouter(
   apiKey: string,
   req: DiagnoseRequest,
   result: DiagnosisResult,
-  model?: string
+  model?: string,
+  ownerContext?: string | null
 ): Promise<AIEnhancement> {
   const causeIds = causesToExplain(result.causes).map((c) => c.id);
   const controller = new AbortController();
@@ -55,7 +56,7 @@ export async function enhanceWithOpenRouter(
         },
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: buildUserPrompt(req, result) },
+          { role: "user", content: buildUserPrompt(req, result, ownerContext) },
         ],
       }),
     });

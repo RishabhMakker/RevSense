@@ -31,18 +31,27 @@ export async function requestDiagnosis(
 }
 
 /**
- * Second-stage call: ask the LLM to rewrite explanations for an
- * already-ranked result. Runs in the background after the diagnosis renders.
- * On any failure the caller keeps the heuristic result, so this throws freely.
+ * Second-stage call: ask the AI to rewrite explanations for an already-ranked
+ * result. Runs in the background after the diagnosis renders. On any failure the
+ * caller keeps the heuristic result, so this throws freely.
+ *
+ * `ownerContext` is an optional one-line history note (e.g. a recurring noise on
+ * a saved vehicle) the AI can weave into its prose. It's sent as a top-level
+ * field the API ignores until it supports it, so passing it is always safe.
  */
 export async function requestExplanation(
   req: DiagnoseRequest,
-  result: DiagnosisResult
+  result: DiagnosisResult,
+  ownerContext?: string | null
 ): Promise<DiagnosisResult> {
   const res = await fetch("/api/explain", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ request: req, result }),
+    body: JSON.stringify({
+      request: req,
+      result,
+      ownerContext: ownerContext ?? null,
+    }),
   });
   if (!res.ok) throw new Error("Explanation request failed.");
   return (await res.json()) as DiagnosisResult;

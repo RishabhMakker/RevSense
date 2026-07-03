@@ -15,6 +15,15 @@ import {
   requestExplanation,
   type AIStatus,
 } from "@/lib/api";
+import { getGarageRepository } from "@/lib/storage/localRepository";
+import { useGarage } from "@/lib/storage/useGarage";
+import { findSavedVehicle } from "@/lib/storage/vehicles";
+import {
+  buildOwnerContext,
+  detectRecurrence,
+  type Recurrence,
+} from "@/lib/storage/recurrence";
+import type { SavedVehicle } from "@/lib/storage/types";
 import { AudioStep } from "./AudioStep";
 import { VehicleStep } from "./VehicleStep";
 import { SymptomStep } from "./SymptomStep";
@@ -82,6 +91,15 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
     aiProviderLabel: null,
   });
 
+  // Personalization state — the saved vehicle this scan is linked to, the scan
+  // record just written, and any detected recurring-noise history.
+  const { vehicles, saveVehicle, updateVehicle } = useGarage();
+  const [matchedVehicle, setMatchedVehicle] = useState<SavedVehicle | null>(null);
+  const [currentScanId, setCurrentScanId] = useState<string | null>(null);
+  const [currentScanAt, setCurrentScanAt] = useState<string | null>(null);
+  const [recurrence, setRecurrence] = useState<Recurrence | null>(null);
+  const [savingVehicle, setSavingVehicle] = useState(false);
+
   useEffect(() => {
     void fetchAIStatus().then(setAIStatus);
   }, []);
@@ -126,6 +144,10 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
 
     setPhase("scanning");
     setSubmitError(null);
+    setRecurrence(null);
+    setMatchedVehicle(null);
+    setCurrentScanId(null);
+    setCurrentScanAt(null);
     const minDelay = new Promise((r) => setTimeout(r, MIN_SCAN_MS));
     try {
       const [diagnosis] = await Promise.all([
@@ -136,6 +158,55 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
       setPhase("results");
       window.scrollTo({ top: 0, behavior: "smooth" });
 
+      // Personalization (best-effort, never blocks or breaks the diagnosis):
+      // link the scan to a saved vehicle, spot a recurring noise, and record
+      // the summary in on-device history.
+      const identity = {
+        make: request.vehicle.make,
+        model: request.vehicle.model,
+        year: request.vehicle.year,
+      };
+      const top3 = diagnosis.causes.slice(0, 3).map((c) => ({
+        id: c.id,
+        title: c.title,
+        category: c.category,
+        confidence: c.confidence,
+      }));
+      let ownerContext: string | null = null;
+      try {
+        const repo = getGarageRepository();
+        const saved = findSavedVehicle(await repo.listVehicles(), identity);
+        setMatchedVehicle(saved);
+
+        if (saved) {
+          const priorScans = await repo.listScans(saved.id);
+          const rec = detectRecurrence(
+            { contexts: request.contexts, topCauses: top3 },
+            priorScans
+          );
+          setRecurrence(rec);
+          if (rec) ownerContext = buildOwnerContext(rec);
+        }
+
+        const scan = await repo.appendScan({
+          vehicleId: saved?.id ?? null,
+          symptomText: request.symptomText,
+          contexts: request.contexts,
+          topCauses: top3,
+          overall: {
+            severity: diagnosis.overall.severity,
+            urgency: diagnosis.overall.urgency,
+            safeToDrive: diagnosis.overall.safeToDrive,
+            verdict: diagnosis.overall.verdict,
+          },
+          mode: diagnosis.mode,
+        });
+        setCurrentScanId(scan.id);
+        setCurrentScanAt(scan.createdAt);
+      } catch {
+        /* storage unavailable — personalization is optional */
+      }
+
       // Fetch the prose explanation in the background so it fills in without
       // holding up the ranking. Failure leaves the heuristic result as-is.
       if (
@@ -144,7 +215,7 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
         diagnosis.causes.length > 0
       ) {
         setExplaining(true);
-        requestExplanation(request, diagnosis)
+        requestExplanation(request, diagnosis, ownerContext)
           .then(setResult)
           .catch(() => {
             /* keep the heuristic result */
@@ -159,6 +230,48 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
     }
   };
 
+  const pickSavedVehicle = (v: SavedVehicle) => {
+    setVehicle({
+      make: v.make,
+      model: v.model,
+      year: String(v.year),
+      mileage: v.mileage != null ? String(v.mileage) : "",
+      engineType: v.engineType,
+    });
+  };
+
+  const updateSavedMileage = (id: string, mileage: number | null) => {
+    void updateVehicle(id, { mileage });
+  };
+
+  const saveCurrentVehicle = async () => {
+    if (matchedVehicle || savingVehicle) return;
+    setSavingVehicle(true);
+    try {
+      const saved = await saveVehicle({
+        make: vehicle.make.trim(),
+        model: vehicle.model.trim(),
+        year: yearNum,
+        mileage: vehicle.mileage.trim() ? Math.round(Number(vehicle.mileage)) : null,
+        engineType: vehicle.engineType,
+        nickname: null,
+        lastScanAt: currentScanAt ?? new Date().toISOString(),
+      });
+      setMatchedVehicle(saved);
+      // Link the scan we just recorded so it shows under the vehicle's history
+      // (and future scans can detect a recurrence against it).
+      if (currentScanId) {
+        await getGarageRepository().updateScan(currentScanId, {
+          vehicleId: saved.id,
+        });
+      }
+    } catch {
+      /* saving is best-effort; leave the affordance in place to retry */
+    } finally {
+      setSavingVehicle(false);
+    }
+  };
+
   const reset = () => {
     if (audio?.objectUrl) URL.revokeObjectURL(audio.objectUrl);
     setAudio(null);
@@ -168,6 +281,10 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
     setResult(null);
     setExplaining(false);
     setSubmitError(null);
+    setMatchedVehicle(null);
+    setCurrentScanId(null);
+    setCurrentScanAt(null);
+    setRecurrence(null);
     setStep(0);
     setPhase("form");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -183,7 +300,17 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
 
   if (phase === "results" && result) {
     return (
-      <ResultsView result={result} explaining={explaining} onReset={reset} />
+      <ResultsView
+        result={result}
+        explaining={explaining}
+        onReset={reset}
+        personalization={{
+          savedVehicle: matchedVehicle,
+          onSaveVehicle: () => void saveCurrentVehicle(),
+          saving: savingVehicle,
+          recurrence,
+        }}
+      />
     );
   }
 
@@ -242,7 +369,15 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
             transition={{ duration: 0.25 }}
           >
             {step === 0 && <AudioStep audio={audio} onAudioChange={setAudio} />}
-            {step === 1 && <VehicleStep vehicle={vehicle} onChange={setVehicle} />}
+            {step === 1 && (
+              <VehicleStep
+                vehicle={vehicle}
+                onChange={setVehicle}
+                savedVehicles={vehicles}
+                onPickSaved={pickSavedVehicle}
+                onUpdateSavedMileage={updateSavedMileage}
+              />
+            )}
             {step === 2 && (
               <SymptomStep
                 symptomText={symptomText}

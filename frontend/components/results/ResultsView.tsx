@@ -16,7 +16,19 @@ import {
 } from "lucide-react";
 import { type DiagnosisResult } from "@revsense/backend";
 import { SEVERITY_STYLES, VERDICT_STYLES } from "@/lib/ui";
+import type { SavedVehicle } from "@/lib/storage/types";
+import type { Recurrence } from "@/lib/storage/recurrence";
 import { CauseCard } from "./CauseCard";
+import { RecurrenceBanner } from "./RecurrenceBanner";
+import { SaveVehicleCard } from "./SaveVehicleCard";
+
+/** Personalization the wizard threads in — all optional, all fail-silent. */
+export interface ResultsPersonalization {
+  savedVehicle: SavedVehicle | null;
+  onSaveVehicle: () => void;
+  saving: boolean;
+  recurrence: Recurrence | null;
+}
 
 function SideCard({
   icon: Icon,
@@ -41,10 +53,12 @@ export function ResultsView({
   result,
   explaining = false,
   onReset,
+  personalization,
 }: {
   result: DiagnosisResult;
   explaining?: boolean;
   onReset: () => void;
+  personalization?: ResultsPersonalization;
 }) {
   const [copied, setCopied] = useState(false);
   const verdict = VERDICT_STYLES[result.overall.safeToDrive];
@@ -152,6 +166,11 @@ export function ResultsView({
         </motion.div>
       )}
 
+      {/* Recurring-noise heads-up (saved vehicles only) */}
+      {personalization?.recurrence && (
+        <RecurrenceBanner recurrence={personalization.recurrence} />
+      )}
+
       {/* Input-quality note */}
       {result.inputQuality.note && (
         <div className="flex items-start gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-400">
@@ -234,6 +253,15 @@ export function ResultsView({
           </SideCard>
         </div>
       </div>
+
+      {/* Keep this vehicle for a faster, more personal start next time */}
+      {personalization && (
+        <SaveVehicleCard
+          savedVehicle={personalization.savedVehicle}
+          onSave={personalization.onSaveVehicle}
+          saving={personalization.saving}
+        />
+      )}
 
       {/* Disclaimer */}
       <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">

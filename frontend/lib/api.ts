@@ -57,6 +57,58 @@ export async function requestExplanation(
   return (await res.json()) as DiagnosisResult;
 }
 
+export interface RecallNotice {
+  component: string;
+  summary: string;
+  consequence: string;
+}
+
+/**
+ * The frontend's view of the /api/vehicle-history priors payload. It mirrors the
+ * `VehiclePriors` contract in @revsense/backend and will be replaced by that
+ * imported type once the engine exports it.
+ */
+export interface VehiclePriorsData {
+  categoryWeights: Partial<Record<string, number>>;
+  recallCategories: string[];
+  source: "nhtsa";
+  fetchedAt: string;
+}
+
+export interface VehicleHistory {
+  priors: VehiclePriorsData | null;
+  recalls: RecallNotice[];
+}
+
+/**
+ * Vehicle-specific reported-issue + recall data for a make/model/year. Always
+ * resolves (never throws): any failure yields empty history so a diagnosis is
+ * never blocked or slowed by it.
+ */
+export async function fetchVehicleHistory(
+  make: string,
+  model: string,
+  year: number
+): Promise<VehicleHistory> {
+  try {
+    const res = await fetch(
+      `/api/vehicle-history?make=${encodeURIComponent(
+        make
+      )}&model=${encodeURIComponent(model)}&year=${encodeURIComponent(
+        String(year)
+      )}`
+    );
+    if (!res.ok) return { priors: null, recalls: [] };
+    const body = (await res.json()) as VehicleHistory;
+    return {
+      priors: body.priors ?? null,
+      recalls: Array.isArray(body.recalls) ? body.recalls : [],
+    };
+  } catch {
+    return { priors: null, recalls: [] };
+  }
+}
+
 export interface AIStatus {
   aiConfigured: boolean;
   aiProviderLabel: string | null;

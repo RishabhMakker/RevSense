@@ -11,9 +11,11 @@ import {
 } from "@revsense/backend";
 import {
   fetchAIStatus,
+  fetchVehicleHistory,
   requestDiagnosis,
   requestExplanation,
   type AIStatus,
+  type VehicleHistory,
 } from "@/lib/api";
 import { getGarageRepository } from "@/lib/storage/localRepository";
 import { useGarage } from "@/lib/storage/useGarage";
@@ -99,6 +101,9 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
   const [currentScanAt, setCurrentScanAt] = useState<string | null>(null);
   const [recurrence, setRecurrence] = useState<Recurrence | null>(null);
   const [savingVehicle, setSavingVehicle] = useState(false);
+  const [vehicleHistory, setVehicleHistory] = useState<VehicleHistory | null>(
+    null
+  );
 
   useEffect(() => {
     void fetchAIStatus().then(setAIStatus);
@@ -126,6 +131,30 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
     true,
   ];
   const canSubmit = stepValid[1] && stepValid[2];
+
+  // Non-blocking: once the vehicle is valid, pull reported-issue + recall priors
+  // so the results can surface recalls and "common for your vehicle" tags. The
+  // diagnosis itself never waits on this — it just enriches the report if ready.
+  const historyMake = vehicle.make.trim();
+  const historyModel = vehicle.model.trim();
+  const vehicleValid = stepValid[1];
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(() => {
+      if (!active) return;
+      if (vehicleValid) {
+        void fetchVehicleHistory(historyMake, historyModel, yearNum).then((h) => {
+          if (active) setVehicleHistory(h);
+        });
+      } else {
+        setVehicleHistory(null);
+      }
+    }, 400);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [historyMake, historyModel, yearNum, vehicleValid]);
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -285,6 +314,7 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
     setCurrentScanId(null);
     setCurrentScanAt(null);
     setRecurrence(null);
+    setVehicleHistory(null);
     setStep(0);
     setPhase("form");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -309,6 +339,8 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
           onSaveVehicle: () => void saveCurrentVehicle(),
           saving: savingVehicle,
           recurrence,
+          recalls: vehicleHistory?.recalls ?? [],
+          priors: vehicleHistory?.priors ?? null,
         }}
       />
     );

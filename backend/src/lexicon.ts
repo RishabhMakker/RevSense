@@ -28,7 +28,9 @@ const SOUND_STEMS: Record<SoundType, string[]> = {
   click: ["click", "clack", "snapp", "snap"],
   pop: ["pop"],
   tick: ["tick", "tapp", "tap"],
-  knock: ["knock", "ping", "pink", "detonat", "marble"],
+  // "pinking" (not "pink") — the bare color word ("pink coolant puddle")
+  // must never read as detonation; found by the benchmark corpus.
+  knock: ["knock", "ping", "pinking", "detonat", "marble"],
   grind: ["grind", "scrap", "grat", "metal on metal", "metal-on-metal"],
   squeal: ["squeal", "screech", "squeak", "shriek"],
   chirp: ["chirp"],

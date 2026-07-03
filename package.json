@@ -13,7 +13,8 @@
     "start": "npm run start -w frontend",
     "lint": "npm run lint -w frontend",
     "typecheck": "npm run typecheck -w backend && npm run typecheck -w frontend",
-    "test": "npm run test -w backend"
+    "test": "npm run test -w backend",
+    "eval": "npm run eval -w backend"
   },
   "engines": {
     "node": ">=20"

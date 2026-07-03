@@ -154,6 +154,31 @@ class LocalGarageRepository implements GarageRepository {
     return scan;
   }
 
+  async updateScan(id: string, patch: Partial<ScanRecord>): Promise<void> {
+    const data = read();
+    const idx = data.scans.findIndex((scan) => scan.id === id);
+    if (idx === -1) return;
+    const current = data.scans[idx]!;
+    data.scans[idx] = {
+      ...current,
+      ...patch,
+      // Identity fields stay immutable regardless of the patch.
+      id: current.id,
+      createdAt: current.createdAt,
+    };
+    // Keep the linked vehicle's lastScanAt in step when a scan is (re)linked.
+    if (patch.vehicleId) {
+      const vIdx = data.vehicles.findIndex((veh) => veh.id === patch.vehicleId);
+      if (vIdx !== -1) {
+        data.vehicles[vIdx] = {
+          ...data.vehicles[vIdx]!,
+          lastScanAt: current.createdAt,
+        };
+      }
+    }
+    write(data);
+  }
+
   async listScans(vehicleId?: string): Promise<ScanRecord[]> {
     const scans = [...read().scans].sort((a, b) =>
       b.createdAt.localeCompare(a.createdAt)

@@ -13,6 +13,8 @@ export interface GarageRepository {
   /** Also deletes every scan belonging to the vehicle. */
   deleteVehicle(id: string): Promise<void>;
   appendScan(s: Omit<ScanRecord, "id" | "createdAt">): Promise<ScanRecord>;
+  /** Patch a stored scan — used to link a scan to a vehicle saved just after it. */
+  updateScan(id: string, patch: Partial<ScanRecord>): Promise<void>;
   /** Newest first. Pass a `vehicleId` to scope to one vehicle. */
   listScans(vehicleId?: string): Promise<ScanRecord[]>;
   eraseAll(): Promise<void>;

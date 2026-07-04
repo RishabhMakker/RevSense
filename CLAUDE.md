@@ -69,7 +69,8 @@ samples/                  # curl-able demo payload + expected behavior
 ```bash
 npm install        # all workspaces
 npm run dev        # Next dev server on :3000
-npm test           # backend engine tests (vitest)
+npm test           # backend engine tests + accuracy benchmark (vitest)
+npm run eval       # golden-corpus benchmark report (top-1/top-3/MRR per tag)
 npm run typecheck  # tsc --noEmit in both workspaces
 npm run lint       # eslint (frontend)
 npm run build      # production build (must stay green)
@@ -80,18 +81,31 @@ npm run build      # production build (must stay green)
 Each `KnownIssue` accumulates points: sound-type matches (+30, cap 45),
 strong phrases (+12, cap 36), supporting phrases (+6, cap 18), strong
 contexts (+18, cap 36), weak contexts (+8, cap 16), audio hints (+10, cap
-20), mileage/age wear boosts (+8/+6), baseRate prior (×8). `notFor` excludes
-engine types (e.g. belt squeal on EVs); `dampFor` halves (knock on diesels).
-Confidence = `100·score/(score+65)`, clamped to **15–88%** — deliberately
-never certain. Top 5 causes returned; trailing weak guesses trimmed but
-never below 3. The overall verdict considers the top cause plus runners-up
-**≥45% only** (tuned so a weak generic match can't set a stop-driving
-verdict — see the test "squealing while braking"). Red flags (redFlags.ts)
-force `safeToDrive: "no"` + `urgency: "immediate"` regardless of causes.
+20), mileage/age wear boosts (+8/+6), baseRate prior (×8). Sound, strong-
+context, and audio-hint points are scaled by an IDF-style **specificity**
+factor (0.6–1.8, precomputed from the KB) so rare, diagnostic signals count
+more than ubiquitous ones; contexts only get the scaling when corroborated
+by sound/phrase evidence. **Negative evidence** subtracts: `negativePhrases`
+(−15 each, cap −30) and `contexts.exclude` (−14 each, cap −28), each
+surfaced as an honest "argues against this" bullet. Optional per-model
+`VehiclePriors` (NHTSA complaint/recall density, fetched client-side) boost
+only `effectiveBaseRate` (max swing +8 raw points): tie-breaker, never a
+kingmaker, and never touching red flags or the safety verdict. `notFor`
+excludes engine types (e.g. belt squeal on EVs); `dampFor` halves (knock on
+diesels). Confidence = `100·score/(score+72)`, clamped to **15–88%** —
+deliberately never certain. Top 5 causes returned; trailing weak guesses
+trimmed but never below 3. The overall verdict considers the top cause plus
+runners-up **≥45% only** (tuned so a weak generic match can't set a
+stop-driving verdict). Red flags (redFlags.ts) force `safeToDrive: "no"` +
+`urgency: "immediate"` regardless of causes, and run on the user's literal
+words only.
 
-When tuning weights, run `npm test` — the suite pins the spec's example
-scenarios (clicking+turning → CV joint #1, grinding+braking → metal pads +
-red flag, EV excludes belt causes, confidence bounds, etc.).
+When tuning weights, run `npm test` — it includes `tests/benchmark.test.ts`,
+which pins measured accuracy floors over the golden corpus in `backend/eval/`
+(top-1/top-3/MRR + zero safety violations). Floors only ratchet UP: after a
+genuine improvement, re-measure with `npm run eval` and raise them. Corpus
+cases tagged `headroom-*` pin desired behavior for phases that haven't
+landed and are excluded from floors.
 
 ## AI layer rules
 

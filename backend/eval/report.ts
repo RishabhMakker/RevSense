@@ -27,6 +27,7 @@ export function formatReport(
     )
   );
   out.push(line("MRR", String(summary.mrr)));
+  out.push(line("median top confidence", `${summary.medianTopConfidence}%`));
   out.push(line("cases with violations", String(summary.violationCases)));
   out.push(line("safety violations", String(summary.safetyViolationCases)));
 

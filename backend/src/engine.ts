@@ -44,7 +44,43 @@ const W = {
   wearAge: 6,
   baseRateScale: 8,
   negativePhrase: -15,
+  negativePhraseCap: -30,
+  excludedContext: -14,
+  excludedContextCap: -28,
 } as const;
+
+/* ------------------------------------------------------------------ */
+/* Signal specificity — an IDF-style likelihood-ratio analogue          */
+/*                                                                      */
+/* A signal shared by many issues ("clunk") separates causes far less  */
+/* than a rare one ("chirp"), so each hit is scaled by how few issues  */
+/* list it. Precomputed from the KB at module load: fully deterministic */
+/* and it keeps adapting as the knowledge base grows.                  */
+/* ------------------------------------------------------------------ */
+
+function specificity(documentFrequency: number): number {
+  const raw =
+    Math.log2(KNOWLEDGE_BASE.length / Math.max(documentFrequency, 1)) / 2;
+  return Math.min(1.8, Math.max(0.6, raw));
+}
+
+function countBy<T>(lists: readonly (readonly T[])[]): Map<T, number> {
+  const df = new Map<T, number>();
+  for (const list of lists) {
+    for (const item of new Set(list)) df.set(item, (df.get(item) ?? 0) + 1);
+  }
+  return df;
+}
+
+const SOUND_DF = countBy(KNOWLEDGE_BASE.map((i) => i.sounds));
+const STRONG_CONTEXT_DF = countBy(KNOWLEDGE_BASE.map((i) => i.contexts.strong));
+const HINT_DF = countBy(KNOWLEDGE_BASE.map((i) => i.audioHints));
+
+const mean = (xs: number[]) =>
+  xs.length === 0 ? 1 : xs.reduce((a, b) => a + b, 0) / xs.length;
+
+/** Specificity threshold above which evidence copy may brag a little. */
+const DISTINCTIVE_SPECIFICITY = 1.3;
 
 /**
  * Vehicle priors (per-model NHTSA complaint/recall density) modulate only the
@@ -106,20 +142,25 @@ function scoreIssue(
   //    the user "described" a word they didn't type).
   const soundHits = sounds.filter((s) => issue.sounds.includes(s.type));
   if (soundHits.length > 0) {
-    score += Math.min(soundHits.length * W.soundMatch, W.soundCap);
+    const soundSpec = mean(
+      soundHits.map((s) => specificity(SOUND_DF.get(s.type) ?? 1))
+    );
+    score += Math.min(soundHits.length * W.soundMatch, W.soundCap) * soundSpec;
     hasDirectEvidence = true;
+    const distinctive =
+      soundSpec >= DISTINCTIVE_SPECIFICITY ? " Few other issues sound like this." : "";
     const literalHits = soundHits.filter((s) => !s.inferred);
     const inferredHits = soundHits.filter((s) => s.inferred);
     if (literalHits.length > 0) {
       const words = literalHits.map((s) => `"${s.matchedWord}"`);
       evidence.push(
-        `You described ${listToProse(words)} — a signature sound for this issue.`
+        `You described ${listToProse(words)} — a signature sound for this issue.${distinctive}`
       );
     }
     if (inferredHits.length > 0) {
       const types = inferredHits.map((s) => `${s.type}-type`);
       evidence.push(
-        `Your description reads as a ${listToProse(types)} sound — a signature sound for this issue.`
+        `Your description reads as a ${listToProse(types)} sound — a signature sound for this issue.${distinctive}`
       );
     }
   }
@@ -139,15 +180,35 @@ function scoreIssue(
   if (supportHits.length > 0) {
     score += Math.min(supportHits.length * W.supportPhrase, W.supportPhraseCap);
   }
+  // Counter-evidence: phrases and contexts that argue AGAINST this cause.
+  // Capped so a chatty description can't nuke a well-supported match, and
+  // surfaced as a plain-language note so the demotion stays explainable.
+  const counterEvidence: string[] = [];
   if (issue.negativePhrases) {
     const negHits = matchPhrases(text, issue.negativePhrases);
-    score += negHits.length * W.negativePhrase;
+    if (negHits.length > 0) {
+      score += Math.max(
+        negHits.length * W.negativePhrase,
+        W.negativePhraseCap
+      );
+      counterEvidence.push(
+        `Some details in your description ("${negHits.join('", "')}") argue against this one.`
+      );
+    }
   }
 
   // 3. Context matches
   const strongCtx = req.contexts.filter((c) => issue.contexts.strong.includes(c));
   if (strongCtx.length > 0) {
-    score += Math.min(strongCtx.length * W.strongContext, W.strongContextCap);
+    // A rare context is only extra-diagnostic when it CORROBORATES sound or
+    // phrase evidence. On its own (vague text + a context checkbox) it stays
+    // flat-weighted, so a rarely-listed context can't mint a confident guess.
+    const corroborated = soundHits.length > 0 || strongHits.length > 0;
+    const ctxSpec = corroborated
+      ? mean(strongCtx.map((c) => specificity(STRONG_CONTEXT_DF.get(c) ?? 1)))
+      : 1;
+    score +=
+      Math.min(strongCtx.length * W.strongContext, W.strongContextCap) * ctxSpec;
     hasDirectEvidence = true;
     const labels = strongCtx.map((c) => SOUND_CONTEXT_LABELS[c].toLowerCase());
     evidence.push(
@@ -158,12 +219,28 @@ function scoreIssue(
   if (weakCtx.length > 0) {
     score += Math.min(weakCtx.length * W.weakContext, W.weakContextCap);
   }
+  const excludedCtx = req.contexts.filter((c) =>
+    issue.contexts.exclude?.includes(c)
+  );
+  if (excludedCtx.length > 0) {
+    score += Math.max(
+      excludedCtx.length * W.excludedContext,
+      W.excludedContextCap
+    );
+    const labels = excludedCtx.map((c) => SOUND_CONTEXT_LABELS[c].toLowerCase());
+    counterEvidence.push(
+      `It happening during ${listToProse(labels)} doesn't fit how this issue usually behaves.`
+    );
+  }
 
   // 4. Audio hints (only when a recording/upload was analyzed)
   if (req.audio) {
     const hintHits = req.audio.hints.filter((h) => issue.audioHints.includes(h));
     if (hintHits.length > 0) {
-      score += Math.min(hintHits.length * W.audioHint, W.audioHintCap);
+      const hintSpec = mean(
+        hintHits.map((h) => specificity(HINT_DF.get(h) ?? 1))
+      );
+      score += Math.min(hintHits.length * W.audioHint, W.audioHintCap) * hintSpec;
       evidence.push(
         `What we picked up in your recording (${listToProse(
           hintHits.map((h) => AUDIO_HINT_LABELS[h].toLowerCase())
@@ -210,12 +287,21 @@ function scoreIssue(
   if (issue.dampFor?.includes(engineType)) score *= 0.5;
 
   if (score <= 0) return null;
-  return { issue, score, evidence: evidence.slice(0, 4), hasDirectEvidence };
+  // Up to four supporting bullets plus one honest counter-note, so a cause
+  // demoted by negative evidence still explains itself.
+  const shown = [...evidence.slice(0, 4), ...counterEvidence.slice(0, 1)];
+  return { issue, score, evidence: shown, hasDirectEvidence };
 }
 
-/** Saturating curve keeps confidence honest: never near 100%. */
+/** Saturating curve keeps confidence honest: never near 100%.
+ *  K re-fit from 65 → 72 when specificity weighting raised raw scores, so the
+ *  benchmark's clear-case median stays in the same 55–75 band as before. */
+const CONFIDENCE_K = 72;
 function toConfidence(score: number): number {
-  return Math.max(15, Math.min(88, Math.round((100 * score) / (score + 65))));
+  return Math.max(
+    15,
+    Math.min(88, Math.round((100 * score) / (score + CONFIDENCE_K)))
+  );
 }
 
 function toRankedCause(scored: ScoredIssue, rank: number): RankedCause {

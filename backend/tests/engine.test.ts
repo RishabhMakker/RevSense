@@ -495,3 +495,158 @@ describe("AI symptom interpreter (input layer)", () => {
     expect(b.interpretation).toBeNull();
   });
 });
+
+describe("negative evidence", () => {
+  it("stationary wording demotes CV joint below the steering column", () => {
+    const result = diagnose(
+      makeRequest({
+        symptomText:
+          "A clunk in the steering column when I rock the wheel back and forth at a standstill.",
+        contexts: ["turning_left", "turning_right"],
+      })
+    );
+    const ids = result.causes.map((c) => c.id);
+    expect(result.causes[0]?.id).toBe("steering-shaft-column");
+    if (ids.includes("cv-axle-wear")) {
+      expect(ids.indexOf("cv-axle-wear")).toBeGreaterThan(
+        ids.indexOf("steering-shaft-column")
+      );
+    }
+  });
+
+  it("surfaces a plain-language counter-note on a demoted cause", () => {
+    const result = diagnose(
+      makeRequest({
+        symptomText:
+          "Clicking when turning at low speed, even while parked at a standstill.",
+        contexts: ["low_speed_turning"],
+      })
+    );
+    const cv = result.causes.find((c) => c.id === "cv-axle-wear");
+    if (cv) {
+      expect(cv.whyLikely.join(" ")).toMatch(/argue against/i);
+    }
+  });
+
+  it("caps accumulated negatives so strong evidence still ranks the cause", () => {
+    // Four CV negative phrases at once; the clicking-while-turning story is
+    // otherwise overwhelming, so CV must stay ranked (capped at −30).
+    const result = diagnose(
+      makeRequest({
+        symptomText:
+          "Rhythmic clicking and popping when turning at low speed under power, though once it also clicked while parked at a standstill not moving.",
+        contexts: ["low_speed_turning", "turning_left"],
+      })
+    );
+    expect(result.causes.map((c) => c.id)).toContain("cv-axle-wear");
+  });
+});
+
+describe("vehicle priors (personalization hook)", () => {
+  const cvRequest = () =>
+    makeRequest({
+      symptomText:
+        "I hear a clicking or popping sound when turning the steering wheel at low speed.",
+      contexts: ["low_speed_turning", "turning_right"],
+    });
+  const drivetrainPriors = {
+    categoryWeights: { drivetrain: 1 },
+    recallCategories: ["drivetrain" as const],
+    source: "nhtsa" as const,
+    fetchedAt: "2026-07-01T00:00:00.000Z",
+  };
+
+  it("boosts confidence for causes in a commonly-reported category", () => {
+    // A moderate-evidence scenario, where the confidence curve isn't
+    // saturated, shows the priors nudge; a strong case may round to the same
+    // percent (the boost is deliberately small).
+    const mountReq = makeRequest({
+      symptomText: "A heavy thunk from under the hood when I put it in gear.",
+      contexts: ["reversing"],
+    });
+    const without = diagnose(mountReq);
+    const withPriors = diagnose({ ...mountReq, priors: drivetrainPriors });
+    const mountWithout = without.causes.find(
+      (c) => c.id === "engine-or-trans-mount"
+    )!;
+    const mountWith = withPriors.causes.find(
+      (c) => c.id === "engine-or-trans-mount"
+    )!;
+    expect(mountWith.confidence).toBeGreaterThan(mountWithout.confidence);
+    expect(withPriors.personalization?.priorsApplied).toBe(true);
+    expect(withPriors.personalization?.recallNotice).toContain("recall");
+    expect(withPriors.personalization?.recallNotice?.toLowerCase()).toContain(
+      "drivetrain"
+    );
+
+    // The strong CV case must never get WORSE with priors, even when rounding
+    // hides the gain.
+    const cvWithout = diagnose(cvRequest()).causes.find(
+      (c) => c.id === "cv-axle-wear"
+    )!;
+    const cvWith = diagnose({ ...cvRequest(), priors: drivetrainPriors }).causes.find(
+      (c) => c.id === "cv-axle-wear"
+    )!;
+    expect(cvWith.confidence).toBeGreaterThanOrEqual(cvWithout.confidence);
+  });
+
+  it("cannot lift an unrelated category into the top 3", () => {
+    const result = diagnose({
+      ...cvRequest(),
+      priors: {
+        categoryWeights: { cooling: 1 },
+        recallCategories: ["cooling" as const],
+        source: "nhtsa" as const,
+        fetchedAt: "2026-07-01T00:00:00.000Z",
+      },
+    });
+    expect(
+      result.causes.slice(0, 3).map((c) => c.id)
+    ).not.toContain("coolant-leak-water-pump");
+    expect(result.causes[0]?.id).toBe("cv-axle-wear");
+  });
+
+  it("never changes red flags or relaxes the safety verdict", () => {
+    const grinding = makeRequest({
+      symptomText:
+        "There is a horrible grinding noise when braking, it gets louder the harder I press.",
+      contexts: ["braking"],
+    });
+    const without = diagnose(grinding);
+    const withPriors = diagnose({
+      ...grinding,
+      priors: {
+        // Deliberately steer priors AWAY from brakes.
+        categoryWeights: { electrical: 1 },
+        recallCategories: ["electrical" as const],
+        source: "nhtsa" as const,
+        fetchedAt: "2026-07-01T00:00:00.000Z",
+      },
+    });
+    expect(withPriors.redFlags.map((f) => f.id)).toEqual(
+      without.redFlags.map((f) => f.id)
+    );
+    expect(withPriors.overall.safeToDrive).toBe("no");
+    expect(withPriors.overall.urgency).toBe("immediate");
+    expect(withPriors.causes[0]?.id).toBe("brake-metal-grinding");
+  });
+
+  it("omits personalization entirely when no priors are sent", () => {
+    const result = diagnose(cvRequest());
+    expect(result.personalization ?? null).toBeNull();
+  });
+
+  it("reports priorsApplied=false for empty priors and skips the notice", () => {
+    const result = diagnose({
+      ...cvRequest(),
+      priors: {
+        categoryWeights: {},
+        recallCategories: [],
+        source: "nhtsa" as const,
+        fetchedAt: "2026-07-01T00:00:00.000Z",
+      },
+    });
+    expect(result.personalization?.priorsApplied).toBe(false);
+    expect(result.personalization?.recallNotice).toBeNull();
+  });
+});

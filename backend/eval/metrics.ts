@@ -117,6 +117,9 @@ export interface Summary {
   /** Cases with at least one failed constraint. */
   violationCases: number;
   safetyViolationCases: number;
+  /** Median top-cause confidence over cases that pin a top-1 — the anchor
+   *  for re-fitting the confidence curve constant after weight changes. */
+  medianTopConfidence: number;
   perTag: Record<string, TagStats>;
 }
 
@@ -130,6 +133,7 @@ export function summarize(outcomes: CaseOutcome[]): Summary {
   let rrSum = 0;
   let violationCases = 0;
   let safetyViolationCases = 0;
+  const topConfidences: number[] = [];
   const perTag: Record<string, TagStats> = {};
 
   for (const o of outcomes) {
@@ -138,6 +142,7 @@ export function summarize(outcomes: CaseOutcome[]): Summary {
       if (o.top1Hit) top1Hits += 1;
       if (o.top3Hit) top3Hits += 1;
       rrSum += o.reciprocalRank ?? 0;
+      topConfidences.push(o.result.causes[0]?.confidence ?? 0);
     }
     if (o.violations.length > 0) violationCases += 1;
     if (o.safetyViolations.length > 0) safetyViolationCases += 1;
@@ -157,6 +162,10 @@ export function summarize(outcomes: CaseOutcome[]): Summary {
     }
   }
 
+  const sorted = [...topConfidences].sort((a, b) => a - b);
+  const medianTopConfidence =
+    sorted.length === 0 ? 0 : (sorted[Math.floor((sorted.length - 1) / 2)] ?? 0);
+
   return {
     cases: outcomes.length,
     top1: { hits: top1Hits, total: top1Total, pct: pct(top1Hits, top1Total) },
@@ -164,6 +173,7 @@ export function summarize(outcomes: CaseOutcome[]): Summary {
     mrr: top1Total === 0 ? 1 : Math.round((1000 * rrSum) / top1Total) / 1000,
     violationCases,
     safetyViolationCases,
+    medianTopConfidence,
     perTag,
   };
 }

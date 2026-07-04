@@ -11,7 +11,8 @@ import { rq } from "../helpers";
 export const NEGATION_CASES: EvalCase[] = [
   {
     id: "neg-click-not-braking-01",
-    tags: ["negation", "headroom-negation"],
+    // Fixed in A2 via brake-cause negative phrases.
+    tags: ["negation"],
     request: rq(
       "Clicking when turning at low speed but definitely NOT when braking, the brakes feel completely fine.",
       ["low_speed_turning"]
@@ -83,7 +84,8 @@ export const NEGATION_CASES: EvalCase[] = [
   },
   {
     id: "neg-not-engine-speed-07",
-    tags: ["negation", "headroom-negation"],
+    // Fixed in A2 via the alternator's road-speed negative phrases.
+    tags: ["negation"],
     request: rq(
       "A whine that rises with road speed but does not change when I rev the engine in neutral.",
       ["highway_speed"]

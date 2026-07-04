@@ -23,7 +23,13 @@ export interface KnownIssue {
   supportingPhrases: string[];
   /** Phrase stems that make this cause less likely. */
   negativePhrases?: string[];
-  contexts: { strong: SoundContext[]; weak: SoundContext[] };
+  contexts: {
+    strong: SoundContext[];
+    weak: SoundContext[];
+    /** Contexts this issue essentially can't produce (e.g. a brake-pad
+     *  squeal while parked at idle) — scored as counter-evidence. */
+    exclude?: SoundContext[];
+  };
   audioHints: AudioHint[];
   /** Wear-item boosts when the vehicle is old / high-mileage. */
   wear?: { mileageFrom?: number; ageFrom?: number };
@@ -54,9 +60,22 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     sounds: ["click", "pop", "clunk"],
     strongPhrases: ["turn", "steering", "full lock", "tight turn", "parking lot"],
     supportingPhrases: ["accelerat", "low speed", "wheel", "front"],
+    // CV joints only click while the wheels are rolling — stationary wording
+    // points at the steering column/rack instead.
+    negativePhrases: [
+      "while stationary",
+      "at a standstill",
+      "standstill",
+      "while parked",
+      "not moving",
+      "at a stop",
+      "car is stopped",
+      "engine off",
+    ],
     contexts: {
       strong: ["low_speed_turning", "turning_left", "turning_right"],
       weak: ["acceleration", "low_speed", "reversing"],
+      exclude: ["idle"],
     },
     audioHints: ["rhythmic_ticking", "sharp_transients"],
     wear: { mileageFrom: 80_000, ageFrom: 8 },
@@ -89,6 +108,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     sounds: ["clunk", "vibration"],
     strongPhrases: ["shift", "gear", "drive to reverse", "put it in gear", "engine moves", "lurch"],
     supportingPhrases: ["accelerat", "vibrat", "idle", "thunk"],
+    negativePhrases: ["only over bumps"],
     contexts: {
       strong: ["acceleration", "reversing"],
       weak: ["idle", "cold_start"],
@@ -123,6 +143,8 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     sounds: ["clunk", "vibration", "click"],
     strongPhrases: ["driveshaft", "into gear", "drivetrain", "under the car", "rear"],
     supportingPhrases: ["reversing", "shift", "vibrat", "speed"],
+    // FWD cars have no conventional driveshaft.
+    negativePhrases: ["front wheel drive", "fwd"],
     contexts: {
       strong: ["reversing", "acceleration"],
       weak: ["highway_speed"],
@@ -155,7 +177,8 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     description:
       "A whine that changes with road speed while in gear — and disappears in neutral — can come from the transmission, often from low or degraded fluid, a failing pump, or worn bearings.",
     sounds: ["whine", "hum"],
-    strongPhrases: ["transmission", "in gear", "neutral", "fluid", "shifting"],
+    // Automatic transmission fluid is red — a red puddle points here.
+    strongPhrases: ["transmission", "in gear", "neutral", "fluid", "shifting", "red fluid"],
     supportingPhrases: ["speed", "accelerat", "slip"],
     contexts: {
       strong: ["acceleration", "highway_speed"],
@@ -193,7 +216,15 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     sounds: ["squeal", "chirp"],
     strongPhrases: ["brake", "braking", "stop", "pedal"],
     supportingPhrases: ["high pitch", "front", "rear", "slow"],
-    contexts: { strong: ["braking"], weak: ["low_speed"] },
+    negativePhrases: [
+      "not when braking",
+      "not while braking",
+      "not the brakes",
+      "brakes are fine",
+      "brakes feel fine",
+      "brakes seem fine",
+    ],
+    contexts: { strong: ["braking"], weak: ["low_speed"], exclude: ["idle"] },
     audioHints: ["high_pitched", "tonal_whine"],
     wear: { mileageFrom: 30_000 },
     baseRate: 0.9,
@@ -224,7 +255,15 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     sounds: ["grind"],
     strongPhrases: ["brake", "braking", "stop", "pedal"],
     supportingPhrases: ["metal", "worse", "louder"],
-    contexts: { strong: ["braking"], weak: [] },
+    negativePhrases: [
+      "not when braking",
+      "not while braking",
+      "not the brakes",
+      "brakes are fine",
+      "brakes feel fine",
+      "brakes seem fine",
+    ],
+    contexts: { strong: ["braking"], weak: [], exclude: ["idle"] },
     audioHints: ["broadband_hiss", "loud_recording"],
     baseRate: 0.6,
     severity: "critical",
@@ -362,8 +401,10 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     description:
       "Hydraulic power steering whines or groans when the fluid is low, aerated, or the pump is wearing out. It's loudest when turning the wheel at low speed or holding it at full lock, and often worse on cold mornings.",
     sounds: ["whine", "hum", "creak"],
-    strongPhrases: ["steering", "turn the wheel", "full lock", "heavy steering", "hard to turn"],
+    // PS fluid is red like ATF — a red puddle plus steering whine fits here.
+    strongPhrases: ["steering", "turn the wheel", "full lock", "heavy steering", "hard to turn", "red fluid"],
     supportingPhrases: ["cold", "fluid", "reservoir", "groan"],
+    negativePhrases: ["electric power steering"],
     contexts: {
       strong: ["low_speed_turning", "turning_left", "turning_right"],
       weak: ["cold_start", "idle"],
@@ -398,7 +439,14 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     description:
       "Wear in the steering rack or inner tie-rod ends causes a knock or rattle over rough roads and a vague, loose feeling on-center. You might hear clunks when sawing the wheel back and forth at a stop.",
     sounds: ["clunk", "rattle", "knock"],
-    strongPhrases: ["loose steering", "play in the wheel", "vague", "tie rod", "rack"],
+    strongPhrases: [
+      "loose steering",
+      "steering feels loose",
+      "play in the wheel",
+      "vague",
+      "tie rod",
+      "rack",
+    ],
     supportingPhrases: ["bump", "rough road", "wander", "steering"],
     contexts: {
       strong: ["over_bumps"],
@@ -577,9 +625,19 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       "humming",
     ],
     supportingPhrases: ["highway", "droning", "growl", "wheel"],
+    // A bearing drone tracks wheel rotation and lateral load; noise that only
+    // appears under braking or never varies with steering points elsewhere.
+    negativePhrases: [
+      "only when braking",
+      "only while braking",
+      "does not change when turning",
+      "doesn't change when turning",
+      "no matter what i do with the wheel",
+    ],
     contexts: {
       strong: ["highway_speed"],
       weak: ["turning_left", "turning_right", "acceleration", "low_speed"],
+      exclude: ["idle"],
     },
     audioHints: ["low_rumble", "broadband_hiss"],
     wear: { mileageFrom: 100_000, ageFrom: 10 },
@@ -719,6 +777,18 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     sounds: ["knock", "clunk", "rumble"],
     strongPhrases: ["deep knock", "bottom of the engine", "oil light", "low oil", "rev"],
     supportingPhrases: ["warm", "louder with rpm", "idle", "rhythmic"],
+    // Rod knock gets LOUDER warm and comes with oil-pressure trouble; the
+    // opposite pattern argues strongly for lifter/manifold noise instead.
+    negativePhrases: [
+      "oil light never",
+      "no oil light",
+      "oil level is full",
+      "oil is full",
+      "only when cold",
+      "goes away when warm",
+      "gone once warm",
+      "fades when warm",
+    ],
     contexts: { strong: ["idle", "acceleration"], weak: ["cold_start"] },
     audioHints: ["rhythmic_ticking", "low_rumble", "loud_recording"],
     notFor: ["electric"],
@@ -750,6 +820,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     sounds: ["tick", "click"],
     strongPhrases: ["tick", "top of the engine", "fades when warm", "cold start"],
     supportingPhrases: ["idle", "oil change", "fast ticking", "valve"],
+    negativePhrases: ["louder when warm", "worse when warm", "louder as it warms"],
     contexts: { strong: ["idle", "cold_start"], weak: ["low_speed"] },
     audioHints: ["rhythmic_ticking", "high_pitched"],
     notFor: ["electric"],
@@ -817,6 +888,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     sounds: ["squeal", "chirp"],
     strongPhrases: ["belt", "cold start", "first start", "morning", "wet", "rain"],
     supportingPhrases: ["accelerat", "ac on", "loud squeal", "goes away"],
+    negativePhrases: ["no belt"],
     contexts: { strong: ["cold_start", "acceleration"], weak: ["idle"] },
     audioHints: ["high_pitched", "tonal_whine", "loud_recording"],
     notFor: ["electric"],
@@ -949,6 +1021,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     sounds: ["hiss", "whine", "grind"],
     strongPhrases: ["coolant", "sweet smell", "after i turn it off", "temperature", "overheating", "steam"],
     supportingPhrases: ["leak", "puddle", "radiator", "smell"],
+    negativePhrases: ["coolant level is fine", "coolant is full", "red fluid"],
     contexts: { strong: ["idle"], weak: ["cold_start", "highway_speed"] },
     audioHints: ["broadband_hiss", "tonal_whine"],
     notFor: ["electric"],
@@ -983,6 +1056,8 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     sounds: ["whine", "hum", "squeal"],
     strongPhrases: ["whine with rpm", "alternator", "louder when revving", "electrical"],
     supportingPhrases: ["headlights", "engine bay", "rev", "constant whine"],
+    // An accessory whine tracks engine RPM, not road speed.
+    negativePhrases: ["road speed", "with road speed"],
     contexts: { strong: ["idle", "acceleration"], weak: ["cold_start", "highway_speed"] },
     audioHints: ["tonal_whine", "high_pitched"],
     notFor: ["electric"],

@@ -82,9 +82,7 @@ export const RED_FLAG_CASES: EvalCase[] = [
   },
   {
     id: "flag-steering-loose-07",
-    // headroom-scoring: rack needs "steering feels loose" as a strong phrase
-    // (A2 KB data) to out-rank sway-bar links here; the safety flag already fires.
-    tags: ["red-flag", "steering", "headroom-scoring"],
+    tags: ["red-flag", "steering"],
     request: rq(
       "The steering feels loose and delayed to respond, with clunking from underneath over bumps.",
       ["over_bumps"]
@@ -110,9 +108,7 @@ export const RED_FLAG_CASES: EvalCase[] = [
   },
   {
     id: "flag-fluid-puddle-09",
-    // headroom-scoring: "red fluid" should implicate transmission / power
-    // steering (their fluid is red) — phrase data lands in A2.
-    tags: ["red-flag", "headroom-scoring"],
+    tags: ["red-flag"],
     request: rq(
       "Whining noise and a puddle of red fluid under the car every morning.",
       ["idle"]

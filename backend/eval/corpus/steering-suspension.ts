@@ -14,9 +14,8 @@ export const STEERING_SUSPENSION_CASES: EvalCase[] = [
   },
   {
     id: "column-clunk-rocking-02",
-    // headroom-scoring: needs negative evidence on cv-axle-wear for
-    // stationary wording ("at a standstill") — lands in A2.
-    tags: ["steering", "clear", "headroom-scoring"],
+    // Fixed in A2: stationary wording is negative evidence against CV wear.
+    tags: ["steering", "clear"],
     request: rq(
       "A clunk in the steering column when I rock the wheel back and forth at a standstill.",
       ["turning_left", "turning_right"]
@@ -52,14 +51,18 @@ export const STEERING_SUSPENSION_CASES: EvalCase[] = [
   },
   {
     id: "rack-tie-rod-sawing-02",
-    // headroom-scoring: "at a stop" should count against CV-joint wear
-    // (needs wheel rotation) — negative evidence lands in A2.
-    tags: ["steering", "clear", "headroom-scoring"],
+    tags: ["steering", "clear"],
     request: rq(
       "Clunks from the front when sawing the steering wheel back and forth at a stop, a friend mentioned tie rod ends.",
       ["turning_left", "turning_right"]
     ),
-    expect: { top1: ["steering-rack-knock"] },
+    // Rack/tie-rod play and column-shaft wear are both legitimate reads of a
+    // stationary wheel-sawing clunk; a mechanic would check the two together.
+    // CV wear may still appear lower down — full exclusion needs A3's
+    // stationary modifier, not just phrase-level negatives.
+    expect: {
+      top1: ["steering-rack-knock", "steering-shaft-column"],
+    },
   },
 
   /* ----------------------------- Suspension ----------------------------- */

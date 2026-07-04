@@ -14,9 +14,13 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { type DiagnosisResult } from "@revsense/backend";
+import {
+  type DiagnosisResult,
+  type IssueCategory,
+  type VehiclePriors,
+} from "@revsense/backend";
 import { SEVERITY_STYLES, VERDICT_STYLES } from "@/lib/ui";
-import type { RecallNotice, VehiclePriorsData } from "@/lib/api";
+import type { RecallNotice } from "@/lib/api";
 import type { SavedVehicle } from "@/lib/storage/types";
 import type { Recurrence } from "@/lib/storage/recurrence";
 import { CauseCard } from "./CauseCard";
@@ -31,13 +35,13 @@ export interface ResultsPersonalization {
   saving: boolean;
   recurrence: Recurrence | null;
   recalls: RecallNotice[];
-  priors: VehiclePriorsData | null;
+  priors: VehiclePriors | null;
 }
 
 /** True when the cause's category is a known reported/recalled area for the vehicle. */
 function isCommonForVehicle(
-  priors: VehiclePriorsData | null | undefined,
-  category: string
+  priors: VehiclePriors | null | undefined,
+  category: IssueCategory
 ): boolean {
   if (!priors) return false;
   return (
@@ -82,11 +86,7 @@ export function ResultsView({
   const VerdictIcon =
     result.overall.safeToDrive === "yes" ? ShieldCheck : ShieldAlert;
 
-  // Forward-compatible read: the engine will add `personalization.recallNotice`
-  // once it consumes priors. Until then this is null and nothing extra renders.
-  const recallNotice =
-    (result as { personalization?: { recallNotice?: string | null } | null })
-      .personalization?.recallNotice ?? null;
+  const recallNotice = result.personalization?.recallNotice ?? null;
   const recalls = personalization?.recalls ?? [];
 
   const copyScript = async () => {

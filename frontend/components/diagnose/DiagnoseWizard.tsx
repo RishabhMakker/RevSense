@@ -169,6 +169,9 @@ export function DiagnoseWizard({ demo = false }: { demo?: boolean }) {
       symptomText: symptomText.trim(),
       contexts,
       audio: audio?.features ?? null,
+      // Per-model NHTSA priors, if the background fetch has resolved by now.
+      // The engine uses them only as a bounded tie-breaker; null is always fine.
+      priors: vehicleHistory?.priors ?? null,
     };
 
     setPhase("scanning");

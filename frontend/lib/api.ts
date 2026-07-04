@@ -1,4 +1,8 @@
-import type { DiagnoseRequest, DiagnosisResult } from "@revsense/backend";
+import type {
+  DiagnoseRequest,
+  DiagnosisResult,
+  VehiclePriors,
+} from "@revsense/backend";
 
 export async function requestDiagnosis(
   req: DiagnoseRequest
@@ -63,20 +67,8 @@ export interface RecallNotice {
   consequence: string;
 }
 
-/**
- * The frontend's view of the /api/vehicle-history priors payload. It mirrors the
- * `VehiclePriors` contract in @revsense/backend and will be replaced by that
- * imported type once the engine exports it.
- */
-export interface VehiclePriorsData {
-  categoryWeights: Partial<Record<string, number>>;
-  recallCategories: string[];
-  source: "nhtsa";
-  fetchedAt: string;
-}
-
 export interface VehicleHistory {
-  priors: VehiclePriorsData | null;
+  priors: VehiclePriors | null;
   recalls: RecallNotice[];
 }
 

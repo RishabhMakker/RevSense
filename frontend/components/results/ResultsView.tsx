@@ -16,7 +16,35 @@ import {
 } from "lucide-react";
 import { type DiagnosisResult } from "@revsense/backend";
 import { SEVERITY_STYLES, VERDICT_STYLES } from "@/lib/ui";
+import type { RecallNotice, VehiclePriorsData } from "@/lib/api";
+import type { SavedVehicle } from "@/lib/storage/types";
+import type { Recurrence } from "@/lib/storage/recurrence";
 import { CauseCard } from "./CauseCard";
+import { RecallsCard } from "./RecallsCard";
+import { RecurrenceBanner } from "./RecurrenceBanner";
+import { SaveVehicleCard } from "./SaveVehicleCard";
+
+/** Personalization the wizard threads in — all optional, all fail-silent. */
+export interface ResultsPersonalization {
+  savedVehicle: SavedVehicle | null;
+  onSaveVehicle: () => void;
+  saving: boolean;
+  recurrence: Recurrence | null;
+  recalls: RecallNotice[];
+  priors: VehiclePriorsData | null;
+}
+
+/** True when the cause's category is a known reported/recalled area for the vehicle. */
+function isCommonForVehicle(
+  priors: VehiclePriorsData | null | undefined,
+  category: string
+): boolean {
+  if (!priors) return false;
+  return (
+    priors.recallCategories.includes(category) ||
+    (priors.categoryWeights[category] ?? 0) >= 0.5
+  );
+}
 
 function SideCard({
   icon: Icon,
@@ -41,16 +69,25 @@ export function ResultsView({
   result,
   explaining = false,
   onReset,
+  personalization,
 }: {
   result: DiagnosisResult;
   explaining?: boolean;
   onReset: () => void;
+  personalization?: ResultsPersonalization;
 }) {
   const [copied, setCopied] = useState(false);
   const verdict = VERDICT_STYLES[result.overall.safeToDrive];
   const severity = SEVERITY_STYLES[result.overall.severity];
   const VerdictIcon =
     result.overall.safeToDrive === "yes" ? ShieldCheck : ShieldAlert;
+
+  // Forward-compatible read: the engine will add `personalization.recallNotice`
+  // once it consumes priors. Until then this is null and nothing extra renders.
+  const recallNotice =
+    (result as { personalization?: { recallNotice?: string | null } | null })
+      .personalization?.recallNotice ?? null;
+  const recalls = personalization?.recalls ?? [];
 
   const copyScript = async () => {
     try {
@@ -152,6 +189,16 @@ export function ResultsView({
         </motion.div>
       )}
 
+      {/* Recurring-noise heads-up (saved vehicles only) */}
+      {personalization?.recurrence && (
+        <RecurrenceBanner recurrence={personalization.recurrence} />
+      )}
+
+      {/* Open recalls for this exact make/model/year (NHTSA) */}
+      {(recalls.length > 0 || recallNotice) && (
+        <RecallsCard recalls={recalls} notice={recallNotice} />
+      )}
+
       {/* Input-quality note */}
       {result.inputQuality.note && (
         <div className="flex items-start gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-400">
@@ -184,6 +231,10 @@ export function ResultsView({
               cause={cause}
               defaultOpen={cause.rank === 1}
               explaining={explaining}
+              commonlyReported={isCommonForVehicle(
+                personalization?.priors,
+                cause.category
+              )}
             />
           ))}
         </div>
@@ -234,6 +285,15 @@ export function ResultsView({
           </SideCard>
         </div>
       </div>
+
+      {/* Keep this vehicle for a faster, more personal start next time */}
+      {personalization && (
+        <SaveVehicleCard
+          savedVehicle={personalization.savedVehicle}
+          onSave={personalization.onSaveVehicle}
+          saving={personalization.saving}
+        />
+      )}
 
       {/* Disclaimer */}
       <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">

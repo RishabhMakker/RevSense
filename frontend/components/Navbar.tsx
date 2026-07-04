@@ -6,6 +6,7 @@ const NAV_LINKS: readonly MobileNavLink[] = [
   { href: "/#how-it-works", label: "How it works" },
   { href: "/#features", label: "Features" },
   { href: "/#safety", label: "Safety" },
+  { href: "/garage", label: "Garage" },
 ];
 
 export function Navbar() {

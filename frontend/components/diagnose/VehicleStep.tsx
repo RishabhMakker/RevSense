@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Car } from "lucide-react";
 import { ENGINE_TYPES, type EngineType } from "@revsense/backend";
 import { Combobox } from "@/components/ui/Combobox";
 import { inputClass } from "@/lib/ui";
@@ -11,6 +12,8 @@ import {
   getStaticYearRange,
   yearsFromRange,
 } from "@/lib/vehicles/years";
+import type { SavedVehicle } from "@/lib/storage/types";
+import { vehicleDisplayName } from "@/lib/storage/vehicles";
 import type { VehicleFormState } from "./types";
 
 const ENGINE_TYPE_LABELS: Record<EngineType, string> = {
@@ -50,12 +53,46 @@ function Field({
 interface VehicleStepProps {
   vehicle: VehicleFormState;
   onChange: (vehicle: VehicleFormState) => void;
+  /** Saved vehicles offered as one-tap prefill (empty garage → nothing shown). */
+  savedVehicles?: SavedVehicle[];
+  onPickSaved?: (vehicle: SavedVehicle) => void;
+  /** Persist a corrected mileage back to the garage after the prefill nudge. */
+  onUpdateSavedMileage?: (id: string, mileage: number | null) => void;
 }
 
-export function VehicleStep({ vehicle, onChange }: VehicleStepProps) {
+export function VehicleStep({
+  vehicle,
+  onChange,
+  savedVehicles = [],
+  onPickSaved,
+  onUpdateSavedMileage,
+}: VehicleStepProps) {
   const set = (patch: Partial<VehicleFormState>) =>
     onChange({ ...vehicle, ...patch });
   const currentYear = new Date().getFullYear();
+
+  // One-tap prefill from the garage, with a single gentle mileage check so the
+  // wear-based scoring uses a current number rather than a stale saved one.
+  const [nudge, setNudge] = useState<SavedVehicle | null>(null);
+  const [mileageDraft, setMileageDraft] = useState("");
+
+  const pickSaved = (v: SavedVehicle) => {
+    onPickSaved?.(v);
+    setNudge(v);
+    setMileageDraft(v.mileage != null ? String(v.mileage) : "");
+  };
+
+  const confirmMileage = () => {
+    const raw = mileageDraft.trim();
+    const parsed = raw ? Math.round(Number(raw)) : null;
+    const finalMileage =
+      parsed != null && Number.isFinite(parsed) && parsed >= 0 && parsed <= 1_500_000
+        ? parsed
+        : null;
+    set({ mileage: finalMileage != null ? String(finalMileage) : "" });
+    if (nudge) onUpdateSavedMileage?.(nudge.id, finalMileage);
+    setNudge(null);
+  };
 
   // Model suggestions follow the selected make: the curated static bundle is
   // available instantly (derived, not stored), and /api/models enriches the
@@ -197,6 +234,62 @@ export function VehicleStep({ vehicle, onChange }: VehicleStepProps) {
           likely. Mileage is optional, but it sharpens the result.
         </p>
       </div>
+
+      {savedVehicles.length > 0 && (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-zinc-400">
+            Start from a saved vehicle
+          </p>
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {savedVehicles.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => pickSaved(v)}
+                className="flex min-h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2 text-sm text-zinc-200 transition-colors hover:border-amber-400/40 hover:bg-amber-500/10 hover:text-amber-100"
+              >
+                <Car className="h-4 w-4 text-amber-300" />
+                {vehicleDisplayName(v)}
+              </button>
+            ))}
+          </div>
+
+          {nudge && (
+            <div className="mt-3 flex flex-wrap items-center gap-2.5 rounded-xl border border-amber-400/25 bg-amber-500/[0.06] px-3.5 py-2.5">
+              <span className="text-sm text-amber-100">
+                {nudge.mileage != null
+                  ? `Still about ${nudge.mileage.toLocaleString()} miles?`
+                  : "How many miles is it on now?"}
+              </span>
+              <input
+                className="min-h-11 w-28 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-sm text-white outline-none focus:border-amber-400/50"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={1_500_000}
+                value={mileageDraft}
+                aria-label="Updated mileage"
+                placeholder="e.g. 82000"
+                onChange={(e) => setMileageDraft(e.target.value)}
+              />
+              <button
+                type="button"
+                onClick={confirmMileage}
+                className="min-h-11 rounded-lg bg-amber-500/20 px-3.5 py-1.5 text-xs font-semibold text-amber-100 transition-colors hover:bg-amber-500/30"
+              >
+                Update
+              </button>
+              <button
+                type="button"
+                onClick={() => setNudge(null)}
+                className="min-h-11 px-2 py-1.5 text-xs text-zinc-400 transition-colors hover:text-white"
+              >
+                Looks right
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Make" htmlFor="vehicle-make">

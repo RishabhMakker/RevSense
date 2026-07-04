@@ -31,21 +31,82 @@ export async function requestDiagnosis(
 }
 
 /**
- * Second-stage call: ask the LLM to rewrite explanations for an
- * already-ranked result. Runs in the background after the diagnosis renders.
- * On any failure the caller keeps the heuristic result, so this throws freely.
+ * Second-stage call: ask the AI to rewrite explanations for an already-ranked
+ * result. Runs in the background after the diagnosis renders. On any failure the
+ * caller keeps the heuristic result, so this throws freely.
+ *
+ * `ownerContext` is an optional one-line history note (e.g. a recurring noise on
+ * a saved vehicle) the AI can weave into its prose. It's sent as a top-level
+ * field the API ignores until it supports it, so passing it is always safe.
  */
 export async function requestExplanation(
   req: DiagnoseRequest,
-  result: DiagnosisResult
+  result: DiagnosisResult,
+  ownerContext?: string | null
 ): Promise<DiagnosisResult> {
   const res = await fetch("/api/explain", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ request: req, result }),
+    body: JSON.stringify({
+      request: req,
+      result,
+      ownerContext: ownerContext ?? null,
+    }),
   });
   if (!res.ok) throw new Error("Explanation request failed.");
   return (await res.json()) as DiagnosisResult;
+}
+
+export interface RecallNotice {
+  component: string;
+  summary: string;
+  consequence: string;
+}
+
+/**
+ * The frontend's view of the /api/vehicle-history priors payload. It mirrors the
+ * `VehiclePriors` contract in @revsense/backend and will be replaced by that
+ * imported type once the engine exports it.
+ */
+export interface VehiclePriorsData {
+  categoryWeights: Partial<Record<string, number>>;
+  recallCategories: string[];
+  source: "nhtsa";
+  fetchedAt: string;
+}
+
+export interface VehicleHistory {
+  priors: VehiclePriorsData | null;
+  recalls: RecallNotice[];
+}
+
+/**
+ * Vehicle-specific reported-issue + recall data for a make/model/year. Always
+ * resolves (never throws): any failure yields empty history so a diagnosis is
+ * never blocked or slowed by it.
+ */
+export async function fetchVehicleHistory(
+  make: string,
+  model: string,
+  year: number
+): Promise<VehicleHistory> {
+  try {
+    const res = await fetch(
+      `/api/vehicle-history?make=${encodeURIComponent(
+        make
+      )}&model=${encodeURIComponent(model)}&year=${encodeURIComponent(
+        String(year)
+      )}`
+    );
+    if (!res.ok) return { priors: null, recalls: [] };
+    const body = (await res.json()) as VehicleHistory;
+    return {
+      priors: body.priors ?? null,
+      recalls: Array.isArray(body.recalls) ? body.recalls : [],
+    };
+  } catch {
+    return { priors: null, recalls: [] };
+  }
 }
 
 export interface AIStatus {

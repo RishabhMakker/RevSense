@@ -84,10 +84,13 @@ export function CauseCard({
   cause,
   defaultOpen = false,
   explaining = false,
+  commonlyReported = false,
 }: {
   cause: RankedCause;
   defaultOpen?: boolean;
   explaining?: boolean;
+  /** This category is a common reported/recalled issue for the exact vehicle. */
+  commonlyReported?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const severity = SEVERITY_STYLES[cause.severity];
@@ -138,6 +141,14 @@ export function CauseCard({
             <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[11px] text-zinc-400">
               {cause.categoryLabel}
             </span>
+            {commonlyReported && (
+              <span
+                className="rounded-full border border-amber-400/30 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-medium text-amber-300"
+                title="Owners of this make, model, and year report issues in this area (NHTSA data)."
+              >
+                Common for your vehicle
+              </span>
+            )}
           </div>
           <div className="mt-3 flex items-center gap-3">
             <div className="h-1.5 max-w-64 flex-1 overflow-hidden rounded-full bg-white/5">

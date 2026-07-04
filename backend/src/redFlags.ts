@@ -1,6 +1,6 @@
 import type { RedFlag, SoundContext } from "./schemas";
 import type { SoundMatch } from "./lexicon";
-import { matchPhrases } from "./lexicon";
+import { hasAffirmedPhrase } from "./modifiers";
 
 interface RedFlagRule {
   id: string;
@@ -14,8 +14,15 @@ interface RedFlagRule {
   ) => boolean;
 }
 
+/**
+ * Affirmed-phrase check: a trigger counts only when it isn't explicitly
+ * negated in the user's own words ("no smoke", "the oil light never came
+ * on"). The negation logic is fully deterministic (modifiers.ts) — the AI
+ * interpreter can never suppress a red flag. Hedges ("not sure if the
+ * smoke…") still count as triggers: uncertainty is not denial.
+ */
 const has = (text: string, phrases: string[]) =>
-  matchPhrases(text, phrases).length > 0;
+  hasAffirmedPhrase(text, phrases);
 
 const RULES: RedFlagRule[] = [
   {

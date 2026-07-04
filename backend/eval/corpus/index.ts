@@ -6,6 +6,7 @@ import { WHEELS_ENGINE_CASES } from "./wheels-engine";
 import { BELTS_EXHAUST_ELECTRICAL_CASES } from "./belts-exhaust-electrical";
 import { VAGUE_CASES } from "./vague";
 import { NEGATION_CASES } from "./negation";
+import { MODIFIER_CASES } from "./modifiers";
 import { AUDIO_CASES } from "./audio";
 import { RED_FLAG_CASES } from "./red-flags";
 import { ENGINE_TYPE_CASES } from "./engine-types";
@@ -18,6 +19,7 @@ export const CORPUS: EvalCase[] = [
   ...BELTS_EXHAUST_ELECTRICAL_CASES,
   ...VAGUE_CASES,
   ...NEGATION_CASES,
+  ...MODIFIER_CASES,
   ...AUDIO_CASES,
   ...RED_FLAG_CASES,
   ...ENGINE_TYPE_CASES,

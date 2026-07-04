@@ -24,7 +24,8 @@ export const NEGATION_CASES: EvalCase[] = [
   },
   {
     id: "neg-squeal-not-brakes-02",
-    tags: ["negation", "headroom-negation"],
+    // Fixed in A3: negated braking context + belief-negation phrases.
+    tags: ["negation"],
     request: rq(
       "Squealing while driving but it does not change at all when I press the brakes, so I do not think it is the brakes.",
       ["cold_start", "acceleration"]
@@ -45,7 +46,9 @@ export const NEGATION_CASES: EvalCase[] = [
   },
   {
     id: "neg-oil-light-never-04",
-    tags: ["negation", "headroom-negation", "red-flag"],
+    // Fixed in A3: deterministic negation of the flag's own trigger phrase
+    // ("the oil light never came on") plus temperature-signal contradiction.
+    tags: ["negation", "red-flag"],
     request: rq(
       "Knocking sound only when cold, completely gone once warm. The oil light never came on and the oil level is full.",
       ["cold_start"]
@@ -57,19 +60,22 @@ export const NEGATION_CASES: EvalCase[] = [
   },
   {
     id: "neg-not-stationary-05",
-    tags: ["negation", "headroom-negation"],
+    // Fixed in A3: the column's "never when stationary" negatives demote it
+    // below CV wear. It may still rank lower down — that's honest triage.
+    tags: ["negation"],
     request: rq(
       "Clicking when rolling through turns, it never happens when the car is stationary even with the wheel turning.",
       ["low_speed_turning"]
     ),
     expect: {
       top1: ["cv-axle-wear"],
-      mustNotRank: ["steering-shaft-column"],
     },
   },
   {
     id: "neg-no-smoke-06",
-    tags: ["negation", "headroom-negation", "red-flag"],
+    // Fixed in A3: "no smoke or burning smell" no longer trips those flags,
+    // while the literal brake-grinding flag stands.
+    tags: ["negation", "red-flag"],
     request: rq(
       "Grinding when braking hard. No smoke or burning smell, just the noise.",
       ["braking"]

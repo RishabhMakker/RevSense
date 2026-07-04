@@ -88,10 +88,21 @@ export async function interpretWithAI(
       { name: provider.name, apiKey: provider.apiKey, model: provider.model },
       req
     );
-    if (signals.soundTypes.length === 0 && signals.contexts.length === 0) {
-      return null;
-    }
-    return signals;
+    const informative =
+      signals.soundTypes.length > 0 ||
+      signals.contexts.length > 0 ||
+      (signals.negatedSoundTypes?.length ?? 0) > 0 ||
+      (signals.negatedContexts?.length ?? 0) > 0 ||
+      (signals.recentWork?.length ?? 0) > 0 ||
+      [
+        signals.onset,
+        signals.frequency,
+        signals.speedDependence,
+        signals.temperature,
+        signals.load,
+        signals.location,
+      ].some((v) => v !== undefined && v !== "unknown");
+    return informative ? signals : null;
   } catch (err) {
     console.error(
       `[revsense] AI interpretation failed (${provider.name}), using literal text only:`,

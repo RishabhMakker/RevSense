@@ -10,8 +10,28 @@ export { diagnose } from "./engine";
 export {
   KNOWLEDGE_BASE,
   KNOWN_ISSUE_COUNT,
+  type IssueSignals,
   type KnownIssue,
 } from "./knowledgeBase";
+export {
+  extractModifiers,
+  hasAffirmedPhrase,
+  FREQUENCIES,
+  LOAD_DEPS,
+  NOISE_LOCATIONS,
+  ONSETS,
+  RECENT_WORK_AREAS,
+  SPEED_DEPENDENCES,
+  TEMPERATURE_DEPS,
+  type Frequency,
+  type LoadDep,
+  type NoiseLocation,
+  type Onset,
+  type RecentWorkArea,
+  type SpeedDependence,
+  type SymptomModifiers,
+  type TemperatureDep,
+} from "./modifiers";
 export {
   detectSounds,
   matchPhrases,

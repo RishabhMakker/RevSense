@@ -9,6 +9,22 @@ import type {
   Urgency,
 } from "./schemas";
 import type { SoundType } from "./lexicon";
+import type { NoiseLocation } from "./modifiers";
+
+/**
+ * Physical behavior of an issue, matched against the structured symptom
+ * modifiers extracted from the description (deterministically, optionally
+ * AI-enriched). Only set a field when the physics is clear-cut — a wheel
+ * bearing tracks road speed; a lifter tick tracks the engine and fades warm.
+ */
+export interface IssueSignals {
+  speed?: "tracks_road_speed" | "tracks_engine_rpm" | "either";
+  temperature?: "cold_only" | "warm_only";
+  load?: "worse_under_load" | "worse_coasting";
+  onset?: "sudden" | "gradual";
+  /** Where the noise plausibly lives (coarse; corners imply their sides). */
+  locations?: NoiseLocation[];
+}
 
 export interface KnownIssue {
   id: string;
@@ -30,6 +46,8 @@ export interface KnownIssue {
      *  squeal while parked at idle) — scored as counter-evidence. */
     exclude?: SoundContext[];
   };
+  /** Structured behavior matched against extracted symptom modifiers. */
+  signals?: IssueSignals;
   audioHints: AudioHint[];
   /** Wear-item boosts when the vehicle is old / high-mileage. */
   wear?: { mileageFrom?: number; ageFrom?: number };
@@ -77,6 +95,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       weak: ["acceleration", "low_speed", "reversing"],
       exclude: ["idle"],
     },
+    signals: { speed: "tracks_road_speed", locations: ["front"] },
     audioHints: ["rhythmic_ticking", "sharp_transients"],
     wear: { mileageFrom: 80_000, ageFrom: 8 },
     baseRate: 0.7,
@@ -113,6 +132,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       strong: ["acceleration", "reversing"],
       weak: ["idle", "cold_start"],
     },
+    signals: { load: "worse_under_load" },
     audioHints: ["sharp_transients", "low_rumble"],
     wear: { mileageFrom: 90_000, ageFrom: 9 },
     baseRate: 0.5,
@@ -149,6 +169,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       strong: ["reversing", "acceleration"],
       weak: ["highway_speed"],
     },
+    signals: { speed: "tracks_road_speed", locations: ["under_car", "rear"] },
     audioHints: ["sharp_transients", "low_rumble"],
     wear: { mileageFrom: 100_000, ageFrom: 10 },
     baseRate: 0.3,
@@ -180,10 +201,20 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     // Automatic transmission fluid is red — a red puddle points here.
     strongPhrases: ["transmission", "in gear", "neutral", "fluid", "shifting", "red fluid"],
     supportingPhrases: ["speed", "accelerat", "slip"],
+    // A trans whine changes with the pump — a noise that ignores revving or
+    // persists unchanged in neutral is coming from somewhere else.
+    negativePhrases: [
+      "doesn't change when i rev",
+      "does not change when i rev",
+      "still there in neutral",
+      "same in neutral",
+      "even in neutral",
+    ],
     contexts: {
       strong: ["acceleration", "highway_speed"],
       weak: ["low_speed", "reversing"],
     },
+    signals: { speed: "tracks_road_speed" },
     audioHints: ["tonal_whine"],
     wear: { mileageFrom: 120_000 },
     baseRate: 0.3,
@@ -220,6 +251,8 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       "not when braking",
       "not while braking",
       "not the brakes",
+      "not think it is the brakes",
+      "not think it's the brakes",
       "brakes are fine",
       "brakes feel fine",
       "brakes seem fine",
@@ -259,6 +292,8 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       "not when braking",
       "not while braking",
       "not the brakes",
+      "not think it is the brakes",
+      "not think it's the brakes",
       "brakes are fine",
       "brakes feel fine",
       "brakes seem fine",
@@ -294,6 +329,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     strongPhrases: ["brake", "pedal puls", "shudder", "steering wheel shake"],
     supportingPhrases: ["highway", "downhill", "vibrat", "rhythm"],
     contexts: { strong: ["braking"], weak: ["highway_speed"] },
+    signals: { speed: "tracks_road_speed" },
     audioHints: ["rhythmic_ticking", "low_rumble"],
     wear: { mileageFrom: 40_000 },
     baseRate: 0.6,
@@ -328,6 +364,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       strong: ["braking"],
       weak: ["highway_speed", "idle", "low_speed"],
     },
+    signals: { speed: "tracks_road_speed" },
     audioHints: ["broadband_hiss"],
     wear: { ageFrom: 10 },
     baseRate: 0.4,
@@ -369,10 +406,21 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       "parked",
     ],
     supportingPhrases: ["turn", "low speed", "parking"],
+    // The column clicks even at rest; "only while moving" points at the axles.
+    negativePhrases: [
+      "only when moving",
+      "only while moving",
+      "only while rolling",
+      "only when rolling",
+      "never when stationary",
+      "never happens when stationary",
+      "never happens when the car is stationary",
+    ],
     contexts: {
       strong: ["low_speed_turning", "turning_left", "turning_right"],
       weak: ["low_speed", "reversing"],
     },
+    signals: { locations: ["in_cabin", "front"] },
     audioHints: ["sharp_transients"],
     wear: { ageFrom: 8, mileageFrom: 80_000 },
     baseRate: 0.4,
@@ -409,6 +457,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       strong: ["low_speed_turning", "turning_left", "turning_right"],
       weak: ["cold_start", "idle"],
     },
+    signals: { speed: "tracks_engine_rpm" },
     audioHints: ["tonal_whine"],
     notFor: ["electric"],
     wear: { ageFrom: 8, mileageFrom: 90_000 },
@@ -452,6 +501,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       strong: ["over_bumps"],
       weak: ["turning_left", "turning_right", "low_speed_turning"],
     },
+    signals: { locations: ["front"] },
     audioHints: ["sharp_transients"],
     wear: { mileageFrom: 100_000, ageFrom: 10 },
     baseRate: 0.35,
@@ -488,6 +538,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       strong: ["low_speed_turning", "turning_left", "turning_right", "over_bumps"],
       weak: ["low_speed", "reversing"],
     },
+    signals: { locations: ["front"] },
     audioHints: ["sharp_transients"],
     wear: { mileageFrom: 80_000, ageFrom: 8 },
     baseRate: 0.5,
@@ -519,6 +570,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     strongPhrases: ["bump", "rough road", "pothole", "speed bump", "rattle over"],
     supportingPhrases: ["front", "metallic", "small bumps", "driveway"],
     contexts: { strong: ["over_bumps"], weak: ["low_speed"] },
+    signals: { locations: ["front"] },
     audioHints: ["sharp_transients", "rhythmic_ticking"],
     wear: { mileageFrom: 60_000, ageFrom: 6 },
     baseRate: 0.7,
@@ -553,6 +605,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       strong: ["over_bumps"],
       weak: ["braking", "acceleration", "low_speed"],
     },
+    signals: { locations: ["front"] },
     audioHints: ["sharp_transients", "low_rumble"],
     wear: { mileageFrom: 90_000, ageFrom: 10 },
     baseRate: 0.5,
@@ -587,6 +640,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       strong: ["over_bumps", "low_speed_turning"],
       weak: ["turning_left", "turning_right", "low_speed"],
     },
+    signals: { locations: ["front"] },
     audioHints: ["sharp_transients"],
     wear: { mileageFrom: 100_000, ageFrom: 10 },
     baseRate: 0.4,
@@ -639,6 +693,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       weak: ["turning_left", "turning_right", "acceleration", "low_speed"],
       exclude: ["idle"],
     },
+    signals: { speed: "tracks_road_speed" },
     audioHints: ["low_rumble", "broadband_hiss"],
     wear: { mileageFrom: 100_000, ageFrom: 10 },
     baseRate: 0.6,
@@ -673,6 +728,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       strong: ["low_speed_turning", "highway_speed"],
       weak: ["turning_left", "turning_right", "over_bumps"],
     },
+    signals: { speed: "tracks_road_speed" },
     audioHints: ["low_rumble", "broadband_hiss"],
     baseRate: 0.45,
     severity: "low",
@@ -713,6 +769,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       strong: ["low_speed", "highway_speed"],
       weak: ["over_bumps", "braking"],
     },
+    signals: { speed: "tracks_road_speed", onset: "sudden" },
     audioHints: ["rhythmic_ticking", "sharp_transients"],
     baseRate: 0.15,
     severity: "critical",
@@ -745,6 +802,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     strongPhrases: ["accelerat", "under load", "uphill", "ping", "marbles"],
     supportingPhrases: ["fuel", "octane", "gas", "hot day", "spark"],
     contexts: { strong: ["acceleration"], weak: ["highway_speed"] },
+    signals: { speed: "tracks_engine_rpm", load: "worse_under_load", locations: ["front"] },
     audioHints: ["rhythmic_ticking", "sharp_transients"],
     notFor: ["electric"],
     dampFor: ["diesel"],
@@ -790,6 +848,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
       "fades when warm",
     ],
     contexts: { strong: ["idle", "acceleration"], weak: ["cold_start"] },
+    signals: { speed: "tracks_engine_rpm", temperature: "warm_only", locations: ["front"] },
     audioHints: ["rhythmic_ticking", "low_rumble", "loud_recording"],
     notFor: ["electric"],
     baseRate: 0.15,
@@ -822,6 +881,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     supportingPhrases: ["idle", "oil change", "fast ticking", "valve"],
     negativePhrases: ["louder when warm", "worse when warm", "louder as it warms"],
     contexts: { strong: ["idle", "cold_start"], weak: ["low_speed"] },
+    signals: { speed: "tracks_engine_rpm", temperature: "cold_only", locations: ["front"] },
     audioHints: ["rhythmic_ticking", "high_pitched"],
     notFor: ["electric"],
     wear: { mileageFrom: 100_000 },
@@ -854,6 +914,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     strongPhrases: ["hiss", "rough idle", "high idle", "vacuum", "engine bay"],
     supportingPhrases: ["idle", "check engine", "stall", "hose"],
     contexts: { strong: ["idle"], weak: ["cold_start", "acceleration"] },
+    signals: { locations: ["front"] },
     audioHints: ["broadband_hiss", "high_pitched"],
     notFor: ["electric"],
     dampFor: ["diesel"],
@@ -890,6 +951,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     supportingPhrases: ["accelerat", "ac on", "loud squeal", "goes away"],
     negativePhrases: ["no belt"],
     contexts: { strong: ["cold_start", "acceleration"], weak: ["idle"] },
+    signals: { speed: "tracks_engine_rpm", locations: ["front"] },
     audioHints: ["high_pitched", "tonal_whine", "loud_recording"],
     notFor: ["electric"],
     wear: { ageFrom: 5, mileageFrom: 60_000 },
@@ -922,6 +984,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     strongPhrases: ["chirp", "pulley", "tensioner", "engine bay", "tracks engine speed"],
     supportingPhrases: ["idle", "rev", "bearing", "constant"],
     contexts: { strong: ["idle"], weak: ["cold_start", "acceleration"] },
+    signals: { speed: "tracks_engine_rpm", locations: ["front"] },
     audioHints: ["rhythmic_ticking", "high_pitched", "tonal_whine"],
     notFor: ["electric"],
     wear: { mileageFrom: 80_000, ageFrom: 8 },
@@ -956,6 +1019,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     strongPhrases: ["under the car", "heat shield", "tinny", "metallic rattle", "buzzing"],
     supportingPhrases: ["idle", "certain rpm", "rev", "exhaust"],
     contexts: { strong: ["idle"], weak: ["acceleration", "cold_start", "low_speed"] },
+    signals: { speed: "tracks_engine_rpm", locations: ["under_car"] },
     audioHints: ["rhythmic_ticking", "high_pitched"],
     notFor: ["electric"],
     wear: { ageFrom: 8 },
@@ -988,6 +1052,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     strongPhrases: ["exhaust smell", "ticking when cold", "manifold", "louder when cold"],
     supportingPhrases: ["cold start", "fades", "smell", "engine bay"],
     contexts: { strong: ["cold_start"], weak: ["idle", "acceleration"] },
+    signals: { speed: "tracks_engine_rpm", temperature: "cold_only", locations: ["front"] },
     audioHints: ["rhythmic_ticking", "sharp_transients"],
     notFor: ["electric"],
     wear: { ageFrom: 10, mileageFrom: 120_000 },
@@ -1023,6 +1088,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     supportingPhrases: ["leak", "puddle", "radiator", "smell"],
     negativePhrases: ["coolant level is fine", "coolant is full", "red fluid"],
     contexts: { strong: ["idle"], weak: ["cold_start", "highway_speed"] },
+    signals: { speed: "tracks_engine_rpm", locations: ["front"] },
     audioHints: ["broadband_hiss", "tonal_whine"],
     notFor: ["electric"],
     wear: { ageFrom: 8, mileageFrom: 90_000 },
@@ -1059,6 +1125,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     // An accessory whine tracks engine RPM, not road speed.
     negativePhrases: ["road speed", "with road speed"],
     contexts: { strong: ["idle", "acceleration"], weak: ["cold_start", "highway_speed"] },
+    signals: { speed: "tracks_engine_rpm", locations: ["front"] },
     audioHints: ["tonal_whine", "high_pitched"],
     notFor: ["electric"],
     wear: { mileageFrom: 100_000, ageFrom: 10 },
@@ -1091,6 +1158,7 @@ export const KNOWLEDGE_BASE: KnownIssue[] = [
     strongPhrases: ["when starting", "starting the car", "turn the key", "won't start", "cranking", "single click"],
     supportingPhrases: ["morning", "intermittent", "battery", "ignition"],
     contexts: { strong: ["cold_start"], weak: [] },
+    signals: { locations: ["front"] },
     audioHints: ["sharp_transients", "broadband_hiss"],
     wear: { mileageFrom: 120_000, ageFrom: 10 },
     baseRate: 0.4,

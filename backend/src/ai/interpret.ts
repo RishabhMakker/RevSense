@@ -6,6 +6,22 @@ import {
   type SoundContext,
 } from "../schemas";
 import { SOUND_TYPES, type SoundType } from "../lexicon";
+import {
+  FREQUENCIES,
+  LOAD_DEPS,
+  NOISE_LOCATIONS,
+  ONSETS,
+  RECENT_WORK_AREAS,
+  SPEED_DEPENDENCES,
+  TEMPERATURE_DEPS,
+  type Frequency,
+  type LoadDep,
+  type NoiseLocation,
+  type Onset,
+  type RecentWorkArea,
+  type SpeedDependence,
+  type TemperatureDep,
+} from "../modifiers";
 
 /**
  * AI symptom interpreter — the *input* layer.
@@ -25,6 +41,18 @@ import { SOUND_TYPES, type SoundType } from "../lexicon";
 export interface InterpretedSignals {
   soundTypes: SoundType[];
   contexts: SoundContext[];
+  /** Sounds the text explicitly rules OUT ("it's not a grinding sound"). */
+  negatedSoundTypes?: SoundType[];
+  /** Contexts the text explicitly rules OUT ("never when braking"). */
+  negatedContexts?: SoundContext[];
+  onset?: Onset;
+  frequency?: Frequency;
+  speedDependence?: SpeedDependence;
+  temperature?: TemperatureDep;
+  load?: LoadDep;
+  location?: NoiseLocation;
+  /** Recent repairs/service the owner mentions — suggestive, not diagnostic. */
+  recentWork?: RecentWorkArea[];
   rationale: string;
 }
 
@@ -41,13 +69,16 @@ const DEFAULT_MODELS: Record<ProviderName, string> = {
   openrouter: "nvidia/nemotron-3-super-120b-a12b:free",
 };
 
-const SYSTEM_PROMPT = `You are the input-understanding layer of RevSense, a car-noise triage tool. A rule-based engine scores a FIXED vocabulary of sound types and driving contexts. Your only job is to read a car owner's free-text description and map it onto that controlled vocabulary, so the engine doesn't miss matches when people use unusual or figurative wording.
+const SYSTEM_PROMPT = `You are the input-understanding layer of RevSense, a car-noise triage tool. A rule-based engine scores a FIXED vocabulary of sound types, driving contexts, and symptom modifiers. Your only job is to read a car owner's free-text description and map it onto that controlled vocabulary, so the engine doesn't miss signals when people use unusual or figurative wording.
 
 Hard rules:
-- Choose sound types ONLY from the allowed list. Choose contexts ONLY from the allowed list. Never output anything not on the lists.
-- Include a sound type or context only if the description genuinely implies it. Favor precision over recall — when unsure, leave it out.
-- Do NOT diagnose, name parts, guess causes, or rank anything. You only label what the noise sounds like and when it happens.
-- "rationale" is ONE short sentence describing how you read the description (e.g. "Read 'whirring that rises with speed' as a whine during acceleration.").`;
+- Every field is enum-closed: choose values ONLY from the allowed lists. Never output anything not on the lists.
+- Include a value only if the description genuinely implies it. Favor precision over recall — when unsure, use "unknown" or leave arrays empty.
+- negatedSoundTypes / negatedContexts: ONLY for things the text EXPLICITLY rules out ("it is not a grind", "never happens when braking"). Absence of a mention is NOT a negation.
+- recentWork: ONLY for work the owner says was actually done recently ("just had new tires fitted"). A wish or a plan is not recent work.
+- speedDependence: tracks_road_speed = pitch/pace follows how fast the CAR moves (continues coasting in neutral); tracks_engine_rpm = follows the ENGINE (changes when revving in place); independent = explicitly tied to neither.
+- Do NOT diagnose, name parts, guess causes, or rank anything. You only label what the noise sounds like, when it happens, and how it behaves.
+- "rationale" is ONE short sentence describing how you read the description (e.g. "Read 'whirring that rises with speed' as a whine tracking road speed.").`;
 
 function buildUserPrompt(req: DiagnoseRequest): string {
   const soundList = SOUND_TYPES.join(", ");
@@ -71,14 +102,27 @@ Contexts the owner already selected (you may confirm and ADD any the text implie
 Allowed sound types: ${soundList}
 Allowed contexts: ${contextList}
 
-Return the sound types and contexts the description implies, plus your one-sentence rationale.`;
+Return the sound types and contexts the description implies, any EXPLICIT negations, the symptom modifiers (onset, frequency, speed dependence, temperature, load, location — "unknown" when not stated), any recent work mentioned, plus your one-sentence rationale.`;
 }
 
 function buildSchema(): Record<string, unknown> {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["soundTypes", "contexts", "rationale"],
+    required: [
+      "soundTypes",
+      "contexts",
+      "negatedSoundTypes",
+      "negatedContexts",
+      "onset",
+      "frequency",
+      "speedDependence",
+      "temperature",
+      "load",
+      "location",
+      "recentWork",
+      "rationale",
+    ],
     properties: {
       soundTypes: {
         type: "array",
@@ -89,6 +133,54 @@ function buildSchema(): Record<string, unknown> {
         type: "array",
         items: { type: "string", enum: [...SOUND_CONTEXTS] },
         description: "Driving contexts the description implies.",
+      },
+      negatedSoundTypes: {
+        type: "array",
+        items: { type: "string", enum: [...SOUND_TYPES] },
+        description:
+          "Sound types the text EXPLICITLY rules out. Empty unless stated.",
+      },
+      negatedContexts: {
+        type: "array",
+        items: { type: "string", enum: [...SOUND_CONTEXTS] },
+        description:
+          "Contexts the text EXPLICITLY rules out. Empty unless stated.",
+      },
+      onset: {
+        type: "string",
+        enum: [...ONSETS],
+        description: "How the noise started, if stated.",
+      },
+      frequency: {
+        type: "string",
+        enum: [...FREQUENCIES],
+        description: "How often it happens, if stated.",
+      },
+      speedDependence: {
+        type: "string",
+        enum: [...SPEED_DEPENDENCES],
+        description: "Whether it tracks road speed or engine RPM, if stated.",
+      },
+      temperature: {
+        type: "string",
+        enum: [...TEMPERATURE_DEPS],
+        description: "Cold-only / warm-only behavior, if stated.",
+      },
+      load: {
+        type: "string",
+        enum: [...LOAD_DEPS],
+        description: "Load dependence (worse under power / coasting), if stated.",
+      },
+      location: {
+        type: "string",
+        enum: [...NOISE_LOCATIONS],
+        description: "Where the noise seems to come from, if stated.",
+      },
+      recentWork: {
+        type: "array",
+        items: { type: "string", enum: [...RECENT_WORK_AREAS] },
+        description:
+          "Areas where the owner says work was RECENTLY done. Empty unless stated.",
       },
       rationale: {
         type: "string",
@@ -108,26 +200,46 @@ function extractJson(text: string): string {
   return candidate.slice(start, end + 1);
 }
 
+function enumArray<T extends string>(
+  value: unknown,
+  allowed: readonly T[]
+): T[] {
+  const valid = new Set<string>(allowed);
+  if (!Array.isArray(value)) return [];
+  return [
+    ...new Set(
+      value.filter((v): v is T => typeof v === "string" && valid.has(v))
+    ),
+  ];
+}
+
+function enumValue<T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+  fallback: T
+): T {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : fallback;
+}
+
 /** Keep only values that are valid members of the engine's enums. */
 function sanitize(raw: unknown): InterpretedSignals {
   const obj = (raw ?? {}) as Record<string, unknown>;
-  const validSounds = new Set<string>(SOUND_TYPES);
-  const validContexts = new Set<string>(SOUND_CONTEXTS);
-  const soundTypes = Array.isArray(obj.soundTypes)
-    ? (obj.soundTypes.filter(
-        (s) => typeof s === "string" && validSounds.has(s)
-      ) as SoundType[])
-    : [];
-  const contexts = Array.isArray(obj.contexts)
-    ? (obj.contexts.filter(
-        (c) => typeof c === "string" && validContexts.has(c)
-      ) as SoundContext[])
-    : [];
   const rationale =
     typeof obj.rationale === "string" ? obj.rationale.slice(0, 300) : "";
   return {
-    soundTypes: [...new Set(soundTypes)],
-    contexts: [...new Set(contexts)],
+    soundTypes: enumArray(obj.soundTypes, SOUND_TYPES),
+    contexts: enumArray(obj.contexts, SOUND_CONTEXTS),
+    negatedSoundTypes: enumArray(obj.negatedSoundTypes, SOUND_TYPES),
+    negatedContexts: enumArray(obj.negatedContexts, SOUND_CONTEXTS),
+    onset: enumValue(obj.onset, ONSETS, "unknown"),
+    frequency: enumValue(obj.frequency, FREQUENCIES, "unknown"),
+    speedDependence: enumValue(obj.speedDependence, SPEED_DEPENDENCES, "unknown"),
+    temperature: enumValue(obj.temperature, TEMPERATURE_DEPS, "unknown"),
+    load: enumValue(obj.load, LOAD_DEPS, "unknown"),
+    location: enumValue(obj.location, NOISE_LOCATIONS, "unknown"),
+    recentWork: enumArray(obj.recentWork, RECENT_WORK_AREAS),
     rationale,
   };
 }

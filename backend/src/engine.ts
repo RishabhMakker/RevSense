@@ -22,6 +22,13 @@ import { detectSounds, matchPhrases, normalizeText, type SoundMatch } from "./le
 import { KNOWLEDGE_BASE, type KnownIssue } from "./knowledgeBase";
 import { detectRedFlags } from "./redFlags";
 import type { InterpretedSignals } from "./ai/interpret";
+import {
+  extractModifiers,
+  type NoiseLocation,
+  type RecentWorkArea,
+  type SymptomModifiers,
+} from "./modifiers";
+import type { IssueCategory } from "./schemas";
 
 /* ------------------------------------------------------------------ */
 /* Scoring weights — tuned by the test suite in backend/tests          */
@@ -47,6 +54,16 @@ const W = {
   negativePhraseCap: -30,
   excludedContext: -14,
   excludedContextCap: -28,
+  // Structured symptom modifiers (speed/temperature/load/onset/location).
+  signalMatch: 8,
+  signalMatchCap: 24,
+  signalContradiction: -10,
+  signalContradictionCap: -20,
+  negatedSound: -12,
+  negatedSoundCap: -24,
+  negatedContext: -14,
+  negatedContextCap: -28,
+  recentWork: 6,
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -81,6 +98,68 @@ const mean = (xs: number[]) =>
 
 /** Specificity threshold above which evidence copy may brag a little. */
 const DISTINCTIVE_SPECIFICITY = 1.3;
+
+/* ------------------------------------------------------------------ */
+/* Structured symptom modifiers                                         */
+/* ------------------------------------------------------------------ */
+
+/** Merge deterministic extraction with optional AI enrichment. The AI may
+ *  only FILL fields the regex pass left unknown and ADD to arrays — it can
+ *  widen the reading, never narrow or override it. */
+function mergeModifiers(
+  det: SymptomModifiers,
+  ai: InterpretedSignals | null | undefined
+): SymptomModifiers {
+  if (!ai) return det;
+  const fill = <T extends string>(detValue: T, aiValue: T | undefined): T =>
+    detValue !== "unknown" ? detValue : (aiValue ?? detValue);
+  return {
+    onset: fill(det.onset, ai.onset),
+    frequency: fill(det.frequency, ai.frequency),
+    speedDependence: fill(det.speedDependence, ai.speedDependence),
+    temperature: fill(det.temperature, ai.temperature),
+    load: fill(det.load, ai.load),
+    location: fill(det.location, ai.location),
+    recentWork: [...new Set([...det.recentWork, ...(ai.recentWork ?? [])])],
+    negatedSoundTypes: [
+      ...new Set([...det.negatedSoundTypes, ...(ai.negatedSoundTypes ?? [])]),
+    ],
+    negatedContexts: [
+      ...new Set([...det.negatedContexts, ...(ai.negatedContexts ?? [])]),
+    ],
+  };
+}
+
+const RECENT_WORK_CATEGORY: Record<RecentWorkArea, IssueCategory> = {
+  brakes: "brakes",
+  tires_wheels: "wheels_tires",
+  suspension: "suspension",
+  engine: "engine",
+  transmission_drivetrain: "drivetrain",
+  exhaust: "exhaust",
+  battery_electrical: "electrical",
+  belts_accessories: "belts",
+};
+
+/** Coarse buckets a specific location implies (front_left → front + left). */
+function coarseLocations(loc: NoiseLocation): Set<NoiseLocation> {
+  const set = new Set<NoiseLocation>([loc]);
+  if (loc.startsWith("front")) set.add("front");
+  if (loc.startsWith("rear")) set.add("rear");
+  if (loc.endsWith("left")) set.add("left");
+  if (loc.endsWith("right")) set.add("right");
+  return set;
+}
+
+const SIGNAL_MATCH_COPY: Record<string, string> = {
+  speed_road: "The way it tracks road speed, not engine speed, fits this issue.",
+  speed_rpm: "The way it tracks engine speed, not road speed, fits this issue.",
+  temperature_cold: "Being worst when cold and fading as it warms is classic for this.",
+  temperature_warm: "Showing up once everything is warmed up fits this issue.",
+  load: "How it changes with load fits this issue.",
+  onset: "The way it started matches how this issue usually appears.",
+  location: "Where you hear it from fits where this issue lives.",
+};
 
 /**
  * Vehicle priors (per-model NHTSA complaint/recall density) modulate only the
@@ -128,7 +207,8 @@ function scoreIssue(
   issue: KnownIssue,
   req: DiagnoseRequest,
   text: string,
-  sounds: SoundMatch[]
+  sounds: SoundMatch[],
+  modifiers: SymptomModifiers
 ): ScoredIssue | null {
   const engineType = req.vehicle.engineType ?? "unknown";
   if (issue.notFor?.includes(engineType)) return null;
@@ -268,6 +348,112 @@ function scoreIssue(
         `A ${age}-year-old vehicle is in the typical age range for this failure.`
       );
     }
+  }
+
+  // 5.5 Structured symptom modifiers vs. the issue's physical signals.
+  //     Matches corroborate (+8 each, cap +24); contradictions between two
+  //     KNOWN values subtract (−10 each, cap −20). "unknown" is always 0.
+  if (issue.signals) {
+    const sig = issue.signals;
+    let matchPoints = 0;
+    let contraPoints = 0;
+    const note = (key: string) => {
+      const copy = SIGNAL_MATCH_COPY[key];
+      if (copy) evidence.push(copy);
+    };
+
+    if (sig.speed && modifiers.speedDependence !== "unknown") {
+      const got = modifiers.speedDependence;
+      const matched =
+        sig.speed === "either" ? got !== "independent" : got === sig.speed;
+      if (matched) {
+        matchPoints += W.signalMatch;
+        note(got === "tracks_road_speed" ? "speed_road" : "speed_rpm");
+      } else {
+        contraPoints += W.signalContradiction;
+        counterEvidence.push(
+          "The way it changes with speed doesn't match how this issue usually behaves."
+        );
+      }
+    }
+    if (sig.temperature && modifiers.temperature !== "unknown") {
+      if (modifiers.temperature === sig.temperature) {
+        matchPoints += W.signalMatch;
+        note(sig.temperature === "cold_only" ? "temperature_cold" : "temperature_warm");
+      } else if (modifiers.temperature !== "any") {
+        contraPoints += W.signalContradiction;
+        counterEvidence.push(
+          "Its hot/cold behavior doesn't match how this issue usually behaves."
+        );
+      }
+    }
+    if (sig.load && modifiers.load !== "unknown") {
+      if (modifiers.load === sig.load) {
+        matchPoints += W.signalMatch;
+        note("load");
+      } else if (modifiers.load !== "unchanged") {
+        contraPoints += W.signalContradiction;
+      }
+    }
+    if (sig.onset && modifiers.onset !== "unknown") {
+      if (modifiers.onset === sig.onset) {
+        matchPoints += W.signalMatch;
+        note("onset");
+      } else {
+        contraPoints += W.signalContradiction;
+      }
+    }
+    if (sig.locations && sig.locations.length > 0 && modifiers.location !== "unknown") {
+      const got = coarseLocations(modifiers.location);
+      if (sig.locations.some((l) => got.has(l) || l === modifiers.location)) {
+        matchPoints += W.signalMatch;
+        note("location");
+      } else {
+        // Contradict only on an unambiguous front/rear conflict.
+        const frontOnly = sig.locations.every((l) => l.startsWith("front"));
+        const rearOnly = sig.locations.every((l) => l.startsWith("rear"));
+        if ((frontOnly && got.has("rear")) || (rearOnly && got.has("front"))) {
+          contraPoints += W.signalContradiction;
+          counterEvidence.push(
+            "Where the noise seems to come from doesn't fit this issue."
+          );
+        }
+      }
+    }
+    score += Math.min(matchPoints, W.signalMatchCap);
+    score += Math.max(contraPoints, W.signalContradictionCap);
+  }
+
+  // 5.6 Explicit negations. A negated sound/context the issue depends on is
+  //     strong counter-evidence — slightly weaker than the points an
+  //     affirmation would have earned, since negated wording is less reliable.
+  const negSounds = modifiers.negatedSoundTypes.filter((t) =>
+    issue.sounds.includes(t)
+  );
+  if (negSounds.length > 0) {
+    score += Math.max(negSounds.length * W.negatedSound, W.negatedSoundCap);
+    counterEvidence.push(
+      "You ruled out the kind of sound this issue usually makes."
+    );
+  }
+  const negCtx = modifiers.negatedContexts.filter(
+    (c) => issue.contexts.strong.includes(c) && !req.contexts.includes(c)
+  );
+  if (negCtx.length > 0) {
+    score += Math.max(negCtx.length * W.negatedContext, W.negatedContextCap);
+    counterEvidence.push(
+      "It not happening in this issue's typical moments argues against it."
+    );
+  }
+
+  // 5.7 Recent work in the same area: suggestive, not diagnostic.
+  if (
+    modifiers.recentWork.some((a) => RECENT_WORK_CATEGORY[a] === issue.category)
+  ) {
+    score += W.recentWork;
+    evidence.push(
+      "This started after recent work in the same area — worth telling the shop."
+    );
   }
 
   // 6. Prior commonness, nudged by per-model priors when the request has them.
@@ -595,18 +781,23 @@ export function diagnose(
   const text = normalizeText(req.symptomText);
   const literalSounds = detectSounds(text);
 
+  // Structured modifiers: deterministic regex extraction always runs; the AI
+  // may only fill fields the regex left unknown and add to arrays.
+  const detModifiers = extractModifiers(text);
+  const modifiers = mergeModifiers(detModifiers, interpreted);
+
   // Merge AI-interpreted signals into the inputs the engine scores on. The AI
   // can only add canonical sounds/contexts the literal matching missed — it
   // never removes anything and never ranks. Safety is deliberately excluded
   // (see redFlags below): a stop-driving alert must trace to the user's words.
   const literalTypes = new Set(literalSounds.map((s) => s.type));
   const inferredSounds: SoundMatch[] = (interpreted?.soundTypes ?? [])
-    .filter((t) => !literalTypes.has(t))
+    .filter((t) => !literalTypes.has(t) && !modifiers.negatedSoundTypes.includes(t))
     .map((t) => ({ type: t, matchedWord: t, inferred: true }));
   const sounds = [...literalSounds, ...inferredSounds];
 
   const addedContexts = (interpreted?.contexts ?? []).filter(
-    (c) => !req.contexts.includes(c)
+    (c) => !req.contexts.includes(c) && !modifiers.negatedContexts.includes(c)
   );
   const effReq: DiagnoseRequest =
     addedContexts.length > 0
@@ -614,11 +805,17 @@ export function diagnose(
       : req;
 
   // Red flags run on the user's LITERAL text and contexts only — the AI
-  // interpreter must not be able to manufacture a stop-driving verdict.
-  const redFlags = detectRedFlags(text, req.contexts, literalSounds);
+  // interpreter must not be able to manufacture OR suppress a stop-driving
+  // verdict. Deterministic negation is the sole exception: a sound the user
+  // explicitly denied ("it's not grinding") doesn't count as a flag trigger,
+  // and phrase triggers use the same affirmed-only matching internally.
+  const affirmedSounds = literalSounds.filter(
+    (s) => !detModifiers.negatedSoundTypes.includes(s.type)
+  );
+  const redFlags = detectRedFlags(text, req.contexts, affirmedSounds);
 
   const scoredAll = KNOWLEDGE_BASE.map((issue) =>
-    scoreIssue(issue, effReq, text, sounds)
+    scoreIssue(issue, effReq, text, sounds, modifiers)
   )
     .filter((s): s is ScoredIssue => s !== null)
     .sort((a, b) => b.score - a.score);

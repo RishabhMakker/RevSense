@@ -86,6 +86,8 @@ export const ISSUE_CATEGORIES = [
   "drivetrain",
   "electrical",
   "wheels_tires",
+  "fuel_air",
+  "hvac",
 ] as const;
 export type IssueCategory = (typeof ISSUE_CATEGORIES)[number];
 
@@ -100,6 +102,8 @@ export const ISSUE_CATEGORY_LABELS: Record<IssueCategory, string> = {
   drivetrain: "Transmission & drivetrain",
   electrical: "Electrical & starting",
   wheels_tires: "Wheels & tires",
+  fuel_air: "Fuel & air delivery",
+  hvac: "Climate control",
 };
 
 /* ------------------------------------------------------------------ */
@@ -115,6 +119,10 @@ export const AUDIO_HINTS = [
   "broadband_hiss",
   "quiet_recording",
   "loud_recording",
+  // Derived from the richer DSP features (periodicity/harmonicity/AM):
+  "irregular_knocking",
+  "strong_harmonics",
+  "modulated_drone",
 ] as const;
 export type AudioHint = (typeof AUDIO_HINTS)[number];
 
@@ -127,6 +135,9 @@ export const AUDIO_HINT_LABELS: Record<AudioHint, string> = {
   broadband_hiss: "Broadband hiss",
   quiet_recording: "Very quiet recording",
   loud_recording: "Very loud / clipped recording",
+  irregular_knocking: "Uneven, irregular knocking",
+  strong_harmonics: "Musical, steady tone",
+  modulated_drone: "Pulsing drone",
 };
 
 export const audioFeaturesSchema = z.object({

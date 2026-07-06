@@ -37,12 +37,15 @@ export const NEGATION_CASES: EvalCase[] = [
   },
   {
     id: "neg-hum-not-turning-03",
-    tags: ["negation", "headroom-negation"],
+    // A steering-independent, speed-tied hum: tire wear and differential
+    // whine are both correct reads once the bearing is ruled out (its noise
+    // changes with lateral load). Resolved by A2 negatives + the A4 diff entry.
+    tags: ["negation"],
     request: rq(
       "Humming at highway speed that does not change when turning or swerving gently, steady no matter what I do with the wheel.",
       ["highway_speed"]
     ),
-    expect: { top1: ["tire-rub-alignment"] },
+    expect: { top1: ["tire-rub-alignment", "diff-gear-whine"] },
   },
   {
     id: "neg-oil-light-never-04",

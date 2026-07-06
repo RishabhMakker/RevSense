@@ -28,30 +28,29 @@ export const ENGINE_TYPE_CASES: EvalCase[] = [
   },
   {
     id: "ev-whine-speed-02",
-    tags: ["ev", "drivetrain", "headroom-kb"],
+    // KB expansion landed: the EV drive-unit entry now owns this case.
+    tags: ["ev", "drivetrain"],
     request: rq(
       "A high pitched whine that rises with speed when accelerating hard.",
       ["acceleration", "highway_speed"],
       { vehicle: veh("Tesla", "Model Y", 2021, 60_000, "electric") }
     ),
-    // Today the closest KB answer is the transmission entry; once EV
-    // reduction-gear whine exists it becomes the expected top-1.
     expect: {
-      top1: ["transmission-whine"],
+      top1: ["ev-reduction-gear-whine"],
       mustNotRank: ["alternator-bearing-whine", "power-steering-whine"],
     },
   },
   {
     id: "ev-hiss-idle-03",
-    tags: ["ev", "headroom-kb"],
+    // KB expansion landed: EV thermal-management entry owns this case.
+    tags: ["ev", "cooling"],
     request: rq(
       "A soft hissing hum from the front of the car while parked and switched on.",
       ["idle"],
       { vehicle: veh("Hyundai", "Ioniq 5", 2023, 25_000, "electric") }
     ),
-    // Vacuum and coolant-pump entries are combustion-only; battery-cooling
-    // entries arrive with the KB expansion.
     expect: {
+      top1: ["ev-cooling-pump-hum"],
       mustNotRank: ["vacuum-leak", "coolant-leak-water-pump"],
     },
   },

@@ -32,17 +32,21 @@ one-project Vercel deployment that this structure exists to preserve.
 backend/src/
   schemas.ts        # zod schemas + ALL shared types/labels (request, result, enums)
   lexicon.ts        # sound-word synonym matching (prefix-stem regexes)
-  knowledgeBase.ts  # 29 KnownIssue entries + KNOWN_ISSUE_COUNT
-  engine.ts         # scoring weights, confidence curve, verdict, mechanic script
-  redFlags.ts       # stop-driving pattern detection
+  modifiers.ts      # deterministic symptom-modifier + negation extraction
+  knowledgeBase.ts  # re-export shim → kb/
+  kb/               # KnownIssue entries by category (60+; KNOWN_ISSUE_COUNT)
+  engine.ts         # scoring weights, specificity, confidence curve, verdict
+  redFlags.ts       # stop-driving pattern detection (affirmed-phrase matching)
   demo.ts           # canned clicking-while-turning request (DEMO_REQUEST)
   ai/
     prompt.ts       # shared system prompt + JSON response schema
     anthropic.ts    # @anthropic-ai/sdk provider (structured outputs, adaptive thinking)
     openai.ts       # fetch-based OpenAI provider
     enhance.ts      # env resolution, defensive merge, graceful fallback
+    interpret.ts    # AI symptom interpreter (enum-closed structured extraction)
   index.ts          # public exports — frontend imports ONLY from here
-backend/tests/engine.test.ts   # 30 vitest tests pinning engine behavior
+backend/eval/       # golden-corpus benchmark: fixtures, metrics, report
+backend/tests/      # engine + modifiers + metrics + benchmark-floor tests
 
 frontend/app/
   page.tsx                # landing

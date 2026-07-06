@@ -16,9 +16,12 @@ export const SOUND_TYPES = [
   "clunk",
   "hiss",
   "whine",
+  "whistle",
+  "flutter",
   "hum",
   "rumble",
   "creak",
+  "groan",
   "vibration",
 ] as const;
 export type SoundType = (typeof SOUND_TYPES)[number];
@@ -30,18 +33,22 @@ const SOUND_STEMS: Record<SoundType, string[]> = {
   tick: ["tick", "tapp", "tap"],
   // "pinking" (not "pink") — the bare color word ("pink coolant puddle")
   // must never read as detonation; found by the benchmark corpus.
-  knock: ["knock", "ping", "pinking", "detonat", "marble"],
+  // "rapp" (not "rap") — "rapid" must never read as a knock.
+  knock: ["knock", "ping", "pinking", "detonat", "marble", "slap", "rapp"],
   grind: ["grind", "scrap", "grat", "metal on metal", "metal-on-metal"],
-  squeal: ["squeal", "screech", "squeak", "shriek"],
+  squeal: ["squeal", "screech", "squeak", "shriek", "scream"],
   chirp: ["chirp"],
   rattle: ["rattl", "buzz", "jingl", "clatter"],
   clunk: ["clunk", "klunk", "thud", "thump", "bang", "clonk"],
-  hiss: ["hiss", "whoosh", "air leak", "air escaping", "sss"],
+  hiss: ["hiss", "whoosh", "air leak", "air escaping", "air rushing", "sss"],
   whine: ["whine", "whin", "whirr", "whir", "wail"],
+  whistle: ["whistl"],
+  flutter: ["flutter", "flapp"],
   hum: ["hum", "humm", "drone", "dron", "growl", "roar", "howl"],
   rumble: ["rumbl", "boom"],
-  creak: ["creak", "creek", "groan", "squawk"],
-  vibration: ["vibrat", "shudder", "judder", "shak", "wobbl", "puls"],
+  creak: ["creak", "creek", "squawk"],
+  groan: ["groan", "moan"],
+  vibration: ["vibrat", "shudder", "judder", "shak", "wobbl", "puls", "shimmy"],
 };
 
 export interface SoundMatch {

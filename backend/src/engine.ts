@@ -75,12 +75,6 @@ const W = {
 /* and it keeps adapting as the knowledge base grows.                  */
 /* ------------------------------------------------------------------ */
 
-function specificity(documentFrequency: number): number {
-  const raw =
-    Math.log2(KNOWLEDGE_BASE.length / Math.max(documentFrequency, 1)) / 2;
-  return Math.min(1.8, Math.max(0.6, raw));
-}
-
 function countBy<T>(lists: readonly (readonly T[])[]): Map<T, number> {
   const df = new Map<T, number>();
   for (const list of lists) {
@@ -89,9 +83,30 @@ function countBy<T>(lists: readonly (readonly T[])[]): Map<T, number> {
   return df;
 }
 
+/** Median document frequency of a map — the anchor where specificity = 1.0.
+ *  Anchoring to the median (not the KB size) keeps the scale stable as the
+ *  knowledge base grows: only a signal's rarity RELATIVE to its peers matters. */
+function medianDf(df: Map<string, number>): number {
+  const values = [...df.values()].sort((a, b) => a - b);
+  return values[Math.floor((values.length - 1) / 2)] ?? 1;
+}
+
+function makeSpecificity(
+  df: Map<string, number>
+): (key: string) => number {
+  const anchor = medianDf(df);
+  return (key: string) => {
+    const raw = 1 + Math.log2(anchor / Math.max(df.get(key) ?? 1, 1)) / 2;
+    return Math.min(1.8, Math.max(0.6, raw));
+  };
+}
+
 const SOUND_DF = countBy(KNOWLEDGE_BASE.map((i) => i.sounds));
 const STRONG_CONTEXT_DF = countBy(KNOWLEDGE_BASE.map((i) => i.contexts.strong));
 const HINT_DF = countBy(KNOWLEDGE_BASE.map((i) => i.audioHints));
+const soundSpecificity = makeSpecificity(SOUND_DF);
+const contextSpecificity = makeSpecificity(STRONG_CONTEXT_DF);
+const hintSpecificity = makeSpecificity(HINT_DF);
 
 const mean = (xs: number[]) =>
   xs.length === 0 ? 1 : xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -222,9 +237,7 @@ function scoreIssue(
   //    the user "described" a word they didn't type).
   const soundHits = sounds.filter((s) => issue.sounds.includes(s.type));
   if (soundHits.length > 0) {
-    const soundSpec = mean(
-      soundHits.map((s) => specificity(SOUND_DF.get(s.type) ?? 1))
-    );
+    const soundSpec = mean(soundHits.map((s) => soundSpecificity(s.type)));
     score += Math.min(soundHits.length * W.soundMatch, W.soundCap) * soundSpec;
     hasDirectEvidence = true;
     const distinctive =
@@ -285,7 +298,7 @@ function scoreIssue(
     // flat-weighted, so a rarely-listed context can't mint a confident guess.
     const corroborated = soundHits.length > 0 || strongHits.length > 0;
     const ctxSpec = corroborated
-      ? mean(strongCtx.map((c) => specificity(STRONG_CONTEXT_DF.get(c) ?? 1)))
+      ? mean(strongCtx.map((c) => contextSpecificity(c)))
       : 1;
     score +=
       Math.min(strongCtx.length * W.strongContext, W.strongContextCap) * ctxSpec;
@@ -317,9 +330,7 @@ function scoreIssue(
   if (req.audio) {
     const hintHits = req.audio.hints.filter((h) => issue.audioHints.includes(h));
     if (hintHits.length > 0) {
-      const hintSpec = mean(
-        hintHits.map((h) => specificity(HINT_DF.get(h) ?? 1))
-      );
+      const hintSpec = mean(hintHits.map((h) => hintSpecificity(h)));
       score += Math.min(hintHits.length * W.audioHint, W.audioHintCap) * hintSpec;
       evidence.push(
         `What we picked up in your recording (${listToProse(
@@ -480,9 +491,10 @@ function scoreIssue(
 }
 
 /** Saturating curve keeps confidence honest: never near 100%.
- *  K re-fit from 65 → 72 when specificity weighting raised raw scores, so the
- *  benchmark's clear-case median stays in the same 55–75 band as before. */
-const CONFIDENCE_K = 72;
+ *  K is re-fit against the benchmark whenever scoring shifts: 65 → 72 when
+ *  specificity raised raw scores (A2), 72 → 68 when the KB doubling diluted
+ *  per-signal specificity (A4). Target: clear-case median in the 55–75 band. */
+const CONFIDENCE_K = 68;
 function toConfidence(score: number): number {
   return Math.max(
     15,

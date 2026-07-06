@@ -153,4 +153,61 @@ export const AUDIO_CASES: EvalCase[] = [
       safeToDrive: "no",
     },
   },
+  {
+    id: "audio-bearing-drone-09",
+    tags: ["wheels_tires", "audio", "clear"],
+    request: rq(
+      "Droning from the front at highway speed, recorded from inside the cabin.",
+      ["highway_speed"],
+      {
+        audio: audioFeatures({
+          spectralCentroidHz: 300,
+          bandEnergy: { low: 0.55, lowMid: 0.3, mid: 0.1, high: 0.05 },
+          amRateHz: 7,
+          periodicityStrength: 0.5,
+          harmonicity: 0.3,
+          hints: ["low_rumble", "modulated_drone"],
+        }),
+      }
+    ),
+    // The pulsing-drone signature is the wheel bearing's own.
+    expect: { top1: ["wheel-bearing"] },
+  },
+  {
+    id: "audio-heatshield-irregular-10",
+    tags: ["exhaust", "audio", "clear"],
+    request: rq(
+      "Metallic rattling from under the car at idle, here is a recording from underneath.",
+      ["idle"],
+      {
+        audio: audioFeatures({
+          crestFactorDb: 15,
+          spectralCentroidHz: 2700,
+          pulseRateHz: null,
+          pulseCount: 24,
+          pulseRegularity: 0.25,
+          hints: ["irregular_knocking", "high_pitched", "sharp_transients"],
+        }),
+      }
+    ),
+    expect: { top1: ["exhaust-heat-shield"] },
+  },
+  {
+    id: "audio-contradiction-bounded-11",
+    tags: ["belts", "audio", "clear"],
+    request: rq(
+      "Loud squeal on cold morning starts, worse in the rain. The recording came out mostly low rumble from wind.",
+      ["cold_start"],
+      {
+        audio: audioFeatures({
+          spectralCentroidHz: 300,
+          bandEnergy: { low: 0.6, lowMid: 0.25, mid: 0.1, high: 0.05 },
+          hints: ["low_rumble"],
+        }),
+      }
+    ),
+    // A wind-swamped recording contradicts the squeal character, but the net
+    // audio contribution is bounded: the typed story must still win.
+    expect: { top1: ["serpentine-belt-squeal"] },
+  },
 ];

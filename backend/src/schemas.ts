@@ -159,7 +159,22 @@ export const audioFeaturesSchema = z.object({
   }),
   pulseRateHz: z.number().min(0).max(50).nullable(),
   pulseCount: z.number().int().min(0).max(10000),
-  hints: z.array(z.enum(AUDIO_HINTS)).max(8),
+  /* Richer deterministic features (optional: older clients omit them). */
+  /** Envelope-autocorrelation period, Hz — sturdier than peak counting. */
+  periodicityHz: z.number().min(0).max(50).nullable().optional(),
+  /** Autocorrelation peak strength 0–1 at that period. */
+  periodicityStrength: z.number().min(0).max(1).optional(),
+  /** Time-domain harmonicity 0–1 (tonal vs. noisy). */
+  harmonicity: z.number().min(0).max(1).optional(),
+  /** 85% spectral rolloff frequency. */
+  rolloffHz: z.number().min(0).max(96000).optional(),
+  /** Amplitude-modulation rate, Hz (the wheel-bearing "wow-wow"). */
+  amRateHz: z.number().min(0).max(50).nullable().optional(),
+  /** 1 − coefficient of variation of inter-pulse intervals, 0–1. */
+  pulseRegularity: z.number().min(0).max(1).nullable().optional(),
+  /** Mean positive spectral flux 0–1 (impact/onset density). */
+  onsetStrength: z.number().min(0).max(1).optional(),
+  hints: z.array(z.enum(AUDIO_HINTS)).max(11),
 });
 export type AudioFeatures = z.infer<typeof audioFeaturesSchema>;
 

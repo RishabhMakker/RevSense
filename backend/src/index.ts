@@ -7,6 +7,7 @@
 
 export * from "./schemas";
 export { diagnose } from "./engine";
+export { extractAudioFeatures, type AnalyzedAudio } from "./audio/dsp";
 export {
   KNOWLEDGE_BASE,
   KNOWN_ISSUE_COUNT,

@@ -127,10 +127,17 @@ landed and are excluded from floors.
 
 ## Audio analysis honesty policy
 
-`lib/audio/analyze.ts` computes real DSP features and maps them to coarse
-hints (`rhythmic_ticking`, `tonal_whine`, …). The UI labels these "basic
-acoustic clues". Never market this as a trained model, and never send raw
-audio to the server — only the `AudioFeatures` object crosses the wire.
+`backend/src/audio/dsp.ts` computes real DSP features (FFT stats, envelope
+autocorrelation periodicity, harmonicity, AM rate, pulse regularity, onset
+strength) and maps them to coarse hints (`rhythmic_ticking`, `tonal_whine`,
+`modulated_drone`, …). It lives in the backend package so it's unit-tested
+with synthesized PCM (`backend/tests/audio.test.ts`) but EXECUTES in the
+browser — `frontend/lib/audio/analyze.ts` is just decode + mono-mix + call.
+The UI labels these "basic acoustic clues". Never market this as a trained
+model, and never send raw audio to the server — only the `AudioFeatures`
+object crosses the wire. In scoring, audio corroborates (+, spec-scaled) or
+contradicts (−, via `HINT_CONFLICTS`) but its net contribution is clamped to
+±20: a recording can never outweigh the typed story.
 
 ## UI copy & voice
 
@@ -142,11 +149,13 @@ Full rule + ban-list: `AGENTS.md`.
 
 ## Known limitations / future work
 
-- No drivetrain-layout awareness (U-joint can rank for a FWD car).
+- No drivetrain-layout awareness beyond phrase-level negatives ("front wheel
+  drive" demotes U-joint, but layout isn't modeled).
 - Heuristic text matching is English-only, prefix-stem based.
-- No tests for the frontend audio analysis (it's browser-only; consider
-  vitest + jsdom with synthesized PCM if expanding).
-- Pulse detection is envelope-peak based; autocorrelation would be sturdier.
+- LLM per-cause score adjustment was evaluated and deliberately NOT built:
+  it breaks per-bullet explainability and benchmark determinism, and the
+  structured-interpretation channel already carries the AI's understanding
+  as typed evidence. Don't add it without revisiting that argument.
 - Roadmap ideas live at the bottom of README.md.
 
 ## Conventions for future sessions

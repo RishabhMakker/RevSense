@@ -46,7 +46,7 @@ export const BELTS_ISSUES: KnownIssue[] = [
     supportingPhrases: ["idle", "rev", "bearing", "constant"],
     contexts: { strong: ["idle"], weak: ["cold_start", "acceleration"] },
     signals: { speed: "tracks_engine_rpm", locations: ["front"] },
-    audioHints: ["rhythmic_ticking", "high_pitched", "tonal_whine"],
+    audioHints: ["rhythmic_ticking", "high_pitched", "tonal_whine", "strong_harmonics"],
     notFor: ["electric"],
     wear: { mileageFrom: 80_000, ageFrom: 8 },
     baseRate: 0.5,

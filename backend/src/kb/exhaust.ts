@@ -12,7 +12,7 @@ export const EXHAUST_ISSUES: KnownIssue[] = [
     supportingPhrases: ["idle", "certain rpm", "rev", "exhaust"],
     contexts: { strong: ["idle"], weak: ["acceleration", "cold_start", "low_speed"] },
     signals: { speed: "tracks_engine_rpm", locations: ["under_car"] },
-    audioHints: ["rhythmic_ticking", "high_pitched"],
+    audioHints: ["rhythmic_ticking", "high_pitched", "irregular_knocking"],
     notFor: ["electric"],
     wear: { ageFrom: 8 },
     baseRate: 0.6,

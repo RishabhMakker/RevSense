@@ -47,6 +47,11 @@ const W = {
   weakContextCap: 16,
   audioHint: 10,
   audioHintCap: 20,
+  audioContradiction: -8,
+  audioContradictionCap: -16,
+  /** Recording evidence can never outweigh the typed story: net audio
+   *  contribution is clamped to this band. */
+  audioNetBound: 20,
   wearMileage: 8,
   wearAge: 6,
   baseRateScale: 8,
@@ -165,6 +170,20 @@ function coarseLocations(loc: NoiseLocation): Set<NoiseLocation> {
   if (loc.endsWith("right")) set.add("right");
   return set;
 }
+
+/** Hints that can't honestly coexist as descriptions of the same noise.
+ *  Used for contradiction scoring: when an issue's expected sound character
+ *  is absent AND the recording shows a conflicting character, that recording
+ *  argues against the issue. */
+const HINT_CONFLICTS: Partial<Record<AudioHint, AudioHint[]>> = {
+  high_pitched: ["low_rumble"],
+  low_rumble: ["high_pitched"],
+  tonal_whine: ["broadband_hiss", "irregular_knocking"],
+  strong_harmonics: ["broadband_hiss", "irregular_knocking"],
+  broadband_hiss: ["tonal_whine", "strong_harmonics"],
+  rhythmic_ticking: ["irregular_knocking"],
+  irregular_knocking: ["rhythmic_ticking", "tonal_whine", "strong_harmonics"],
+};
 
 const SIGNAL_MATCH_COPY: Record<string, string> = {
   speed_road: "The way it tracks road speed, not engine speed, fits this issue.",
@@ -326,18 +345,39 @@ function scoreIssue(
     );
   }
 
-  // 4. Audio hints (only when a recording/upload was analyzed)
-  if (req.audio) {
-    const hintHits = req.audio.hints.filter((h) => issue.audioHints.includes(h));
+  // 4. Audio corroboration / contradiction (only when a recording/upload was
+  //    analyzed and isn't too quiet to trust). Net contribution is clamped to
+  //    ±audioNetBound so a bad phone recording never outweighs typed symptoms.
+  if (req.audio && !req.audio.hints.includes("quiet_recording")) {
+    const observed = req.audio.hints;
+    const hintHits = observed.filter((h) => issue.audioHints.includes(h));
+    let audioScore = 0;
     if (hintHits.length > 0) {
       const hintSpec = mean(hintHits.map((h) => hintSpecificity(h)));
-      score += Math.min(hintHits.length * W.audioHint, W.audioHintCap) * hintSpec;
+      audioScore =
+        Math.min(hintHits.length * W.audioHint, W.audioHintCap) * hintSpec;
       evidence.push(
         `What we picked up in your recording (${listToProse(
           hintHits.map((h) => AUDIO_HINT_LABELS[h].toLowerCase())
         )}) matches this issue.`
       );
+    } else if (issue.audioHints.length > 0) {
+      // None of the expected character was heard — does the recording show a
+      // CONFLICTING character instead?
+      const conflicts = issue.audioHints.filter((expected) =>
+        (HINT_CONFLICTS[expected] ?? []).some((c) => observed.includes(c))
+      );
+      if (conflicts.length > 0) {
+        audioScore = Math.max(
+          conflicts.length * W.audioContradiction,
+          W.audioContradictionCap
+        );
+        counterEvidence.push(
+          "Your recording doesn't have the character this issue usually has."
+        );
+      }
     }
+    score += Math.max(-W.audioNetBound, Math.min(W.audioNetBound, audioScore));
   }
 
   // 5. Vehicle wear profile
@@ -669,6 +709,9 @@ const AUDIO_PLAIN: Partial<Record<AudioHint, string>> = {
   low_rumble: "it's a low rumble",
   tonal_whine: "it's a steady whine",
   broadband_hiss: "it sounds like a rush of air",
+  irregular_knocking: "it knocks unevenly, without a steady beat",
+  strong_harmonics: "it has a musical, steady tone",
+  modulated_drone: "it pulses as it drones",
 };
 
 /** Collapse the overlapping turning contexts into one natural phrase so the

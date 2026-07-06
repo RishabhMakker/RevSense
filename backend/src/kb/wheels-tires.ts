@@ -31,7 +31,7 @@ export const WHEELS_TIRES_ISSUES: KnownIssue[] = [
       exclude: ["idle"],
     },
     signals: { speed: "tracks_road_speed" },
-    audioHints: ["low_rumble", "broadband_hiss"],
+    audioHints: ["low_rumble", "broadband_hiss", "modulated_drone"],
     wear: { mileageFrom: 100_000, ageFrom: 10 },
     baseRate: 0.6,
     severity: "high",
